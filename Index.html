@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <title>2026 FoMD Summer Students' Research Day – Abstract Submission</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      font-family: Roboto, Arial, sans-serif;
+      padding: 24px 16px 48px;
+      max-width: 860px;
+      margin: auto;
+      background: #f4f6f4;
+      color: #1a1a1a;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* ── Header ── */
+    .page-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .page-header img {
+      max-width: 280px;
+      display: block;
+      margin: 0 auto 16px;
+    }
+    .page-header h1 {
+      font-size: 1.5em;
+      color: #003C1E;
+      margin: 0 0 6px;
+    }
+    .page-header h2 {
+      font-size: 1.15em;
+      color: #005C2E;
+      margin: 0;
+      font-weight: normal;
+    }
+
+    /* ── Section cards ── */
+    .section-card {
+      background: #fff;
+      border: 1px solid #d4e8d4;
+      border-radius: 10px;
+      padding: 22px 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 6px rgba(0,60,30,0.06);
+    }
+    .section-title {
+      font-size: 1.1em;
+      font-weight: 700;
+      color: #005C2E;
+      border-bottom: 2px solid #005C2E;
+      padding-bottom: 8px;
+      margin: 0 0 18px;
+    }
+
+    /* ── Info / notice boxes ── */
+    .info-box {
+      background: #f2fdf2;
+      border: 1px solid #b8ddb8;
+      border-radius: 7px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      color: #003C1E;
+      font-size: 0.95em;
+    }
+    .info-box p { margin: 6px 0; }
+    .info-box ul { margin: 6px 0 0; padding-left: 20px; }
+    .info-box li { margin-bottom: 4px; }
+
+    .privacy-box {
+      background: #fffbf0;
+      border: 1px solid #e8d88a;
+      border-radius: 7px;
+      padding: 14px 16px;
+      margin-top: 14px;
+      font-size: 0.95em;
+      color: #4a3800;
+    }
+    .privacy-box p { margin: 6px 0; }
+
+    /* ── Form elements ── */
+    label {
+      font-weight: 600;
+      display: block;
+      margin-top: 14px;
+      color: #003C1E;
+    }
+    label .required { color: #c0392b; margin-left: 2px; }
+    label .hint {
+      font-weight: normal;
+      font-size: 0.88em;
+      color: #555;
+      margin-left: 6px;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 9px 11px;
+      margin-top: 5px;
+      border: 1px solid #bbb;
+      border-radius: 5px;
+      font-size: 0.97em;
+      font-family: inherit;
+      color: #1a1a1a;
+      background: #fff;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #005C2E;
+      box-shadow: 0 0 0 2px rgba(0,92,46,0.12);
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 16px;
+    }
+    @media (max-width: 580px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* ── Authors ── */
+    #authorsContainer { margin-top: 8px; }
+    .author-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    @media (max-width: 580px) {
+      .author-row { grid-template-columns: 1fr; }
+    }
+    .author-row input { margin-top: 0; }
+
+    .btn-add-author {
+      margin-top: 10px;
+      padding: 7px 14px;
+      background: #fff;
+      color: #005C2E;
+      border: 2px solid #005C2E;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9em;
+      font-weight: 600;
+    }
+    .btn-add-author:hover { background: #f0faf0; }
+
+    .btn-remove {
+      padding: 6px 11px;
+      background: #fff;
+      color: #c0392b;
+      border: 1px solid #e5a0a0;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1em;
+      font-weight: bold;
+      line-height: 1;
+    }
+    .btn-remove:hover { background: #fff5f5; }
+
+    /* ── Word count ── */
+    .word-count-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 14px;
+    }
+    .word-count-row label { margin-top: 0; }
+    #wordCountDisplay {
+      font-size: 0.88em;
+      color: #555;
+      white-space: nowrap;
+    }
+    #wordCountDisplay.over { color: #c0392b; font-weight: bold; }
+
+    /* ── Submit ── */
+    .submit-area {
+      text-align: center;
+      margin-top: 28px;
+    }
+    .btn-submit {
+      padding: 12px 36px;
+      background: #005C2E;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 1.05em;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.02em;
+    }
+    .btn-submit:hover { background: #004422; }
+    .btn-submit:disabled { background: #888; cursor: not-allowed; }
+
+    .submitting-msg {
+      display: none;
+      margin-top: 12px;
+      color: #005C2E;
+      font-style: italic;
+    }
+
+    /* ── Error ── */
+    .field-error {
+      color: #c0392b;
+      font-size: 0.85em;
+      margin-top: 3px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Edit-mode banner — hidden by default, shown by JS when EDIT_TOKEN is set -->
+  <div id="editBanner" style="display:none; background:#fff8e1; border:1px solid #f9a825;
+       border-radius:8px; padding:14px 20px; margin-bottom:20px; color:#5d4200; font-size:0.95em;">
+    <strong>You are editing an existing submission.</strong>
+    Make your changes below and click <strong>Update Abstract</strong> to save.
+    Your original edit link remains valid for any further changes before the deadline.
+  </div>
+
+  <!-- ══ PAGE HEADER ══ -->
+  <div class="page-header">
+    <img src="https://i.imgur.com/ATmfsjU.png" alt="Faculty of Medicine & Dentistry Logo">
+    <h1>Faculty of Medicine &amp; Dentistry</h1>
+    <h2>2026 Summer Students' Research Day &mdash; Abstract Submission Form</h2>
+  </div>
+
+  <!-- ══ 1. INSTRUCTIONS & PRIVACY ══ -->
+  <div class="section-card">
+    <div class="section-title">Instructions &amp; Privacy</div>
+
+    <div class="info-box">
+      <p><strong>Instructions</strong></p>
+      <ol style="margin: 8px 0 0; padding-left: 20px;">
+        <li>Ensure your supervisor has reviewed and approved your abstract prior to submission.</li>
+        <li>Upon submitting your abstract, you will receive a confirmation email with a link to view and edit the contents of your abstract up until the deadline and portal closes.</li>
+        <li>Once your abstract is reviewed by the Office of Research, you will receive confirmation of not accepted or accepted with further instructions for formatting your poster.</li>
+      </ol>
+      <p style="margin-top: 10px;">
+        For additional information, visit the
+        <a href="https://www.ualberta.ca/medicine/research/studentships/researchday.html" target="_blank" style="color: #003C1E;">
+          FoMD Summer Students' Research Day</a> page.
+      </p>
+    </div>
+
+    <div class="privacy-box">
+      <p><strong>Privacy Statement</strong></p>
+
+      <p>
+        The personal information collected through this form (including name, email address, studentship details,
+        supervisor information, and abstract content) is collected under the authority of
+        <em>Section 33(c) of the Alberta Freedom of Information and Protection of Privacy Act (FOIP)</em>
+        and the <em>Personal Information Protection Act (PIPA)</em>.
+      </p>
+
+      <p>
+        This information is collected for the purpose of administering the Faculty of Medicine &amp; Dentistry
+        Summer Students' Research Day abstract review and presentation selection process. Responses will be stored
+        securely and access will be limited to the FoMD Undergraduate Research Program.
+      </p>
+
+      <p>
+        If you have any questions about the collection or use of your information, please contact:<br><br>
+        <strong>FoMD Undergraduate Research Program</strong><br>
+        Faculty of Medicine &amp; Dentistry, University of Alberta<br>
+        <a href="mailto:fmdugrad@ualberta.ca" style="color: #7a5c00;">fmdugrad@ualberta.ca</a>
+      </p>
+
+      <p>
+        For more information about the <em>Alberta Freedom of Information and Protection of Privacy Act</em>,
+        visit the <a href="https://www.alberta.ca/freedom-of-information-and-protection-of-privacy" target="_blank" style="color: #7a5c00;">Government of Alberta FOIP page</a>.
+      </p>
+    </div>
+  </div>
+
+  <form id="abstractForm" novalidate>
+
+    <!-- ══ 2. STUDENT INFORMATION ══ -->
+    <div class="section-card">
+      <div class="section-title">Student Information</div>
+
+      <div class="two-col">
+        <div>
+          <label>First Name <span class="required">*</span></label>
+          <input type="text" name="studentFirstName" autocomplete="given-name" required>
+        </div>
+        <div>
+          <label>Last Name <span class="required">*</span></label>
+          <input type="text" name="studentLastName" autocomplete="family-name" required>
+        </div>
+      </div>
+
+      <label>University Email Address <span class="required">*</span></label>
+      <input type="email" name="studentEmail" autocomplete="email" required placeholder="yourccid@ualberta.ca">
+
+      <label>Stipend Support <span class="required">*</span></label>
+      <select name="studentship" required>
+        <option value="" disabled selected>— Select your stipend —</option>
+        <option value="A David and Beatrice Reidford Research Scholarship">A David and Beatrice Reidford Research Scholarship</option>
+        <option value="A Health Sciences TD Bank Award For Medicine &amp; Dentistry">A Health Sciences TD Bank Award For Medicine &amp; Dentistry</option>
+        <option value="Alberta Cancer Foundation Summer Studentship Award">Alberta Cancer Foundation Summer Studentship Award</option>
+        <option value="Alberta Diabetes Institute Summer Studentship Award">Alberta Diabetes Institute Summer Studentship Award</option>
+        <option value="Alberta Innovates Summer Research Studentship">Alberta Innovates Summer Research Studentship</option>
+        <option value="Canadian Association of Gastroenterology (CAG)">Canadian Association of Gastroenterology (CAG)</option>
+        <option value="Canadian Blood Services Summer Internship">Canadian Blood Services Summer Internship</option>
+        <option value="Canadian Institutes of Health Research (CIHR)">Canadian Institutes of Health Research (CIHR)</option>
+        <option value="Canadian Institutes of Health Research (CIHR) - Undergraduate Student Research Award (CIHR USRA)">Canadian Institutes of Health Research (CIHR) – Undergraduate Student Research Award (CIHR USRA)</option>
+        <option value="Department of Surgery Summer Studentship">Department of Surgery Summer Studentship</option>
+        <option value="Dr. Brian Sykes Undergraduate Summer Research Studentship in Biomedical Sciences">Dr. Brian Sykes Undergraduate Summer Research Studentship in Biomedical Sciences</option>
+        <option value="Douglas L Sykes Undergraduate Studentship in Mental Health">Douglas L Sykes Undergraduate Studentship in Mental Health</option>
+        <option value="LKSIoV Undergraduate Summer Research Award">LKSIoV Undergraduate Summer Research Award</option>
+        <option value="Mach-Gaensslen Foundation Summer Studentship">Mach-Gaensslen Foundation Summer Studentship</option>
+        <option value="Medicine Class of 1986 Research Scholarship">Medicine Class of 1986 Research Scholarship</option>
+        <option value="Motyl Endowment Cardiac Sciences Summer Studentship Award">Motyl Endowment Cardiac Sciences Summer Studentship Award</option>
+        <option value="Multiple Sclerosis Society of Canada - endMS Summer Studentship Award">Multiple Sclerosis Society of Canada – endMS Summer Studentship Award</option>
+        <option value="Natural Sciences and Engineering Research Council of Canada – Undergraduate Student Research Award (NSERC USRA)">Natural Sciences and Engineering Research Council of Canada – Undergraduate Student Research Award (NSERC USRA)</option>
+        <option value="Northern Alberta Clinical Trials and Research Centre – The Dr. Garth L. Warnock Summer Studentship">Northern Alberta Clinical Trials and Research Centre – The Dr. Garth L. Warnock Summer Studentship</option>
+        <option value="Northern Alberta Clinical Trials and Research Centre (NACTRC) Summer Student Award">Northern Alberta Clinical Trials and Research Centre (NACTRC) Summer Student Award</option>
+        <option value="Office of the Provost and VP (Academic) Summer Studentship Award">Office of the Provost and VP (Academic) Summer Studentship Award</option>
+        <option value="School of Dentistry Summer Research Program">School of Dentistry Summer Research Program</option>
+        <option value="Summer Studentship in Health Professions Education Scholarship - Faculty of Medicine &amp; Dentistry">Summer Studentship in Health Professions Education Scholarship – Faculty of Medicine &amp; Dentistry</option>
+        <option value="Summer Volunteer Project">Summer Volunteer Project</option>
+        <option value="Supervisor Funded">Supervisor Funded</option>
+        <option value="The Dorothy Jean Usher Memorial Summer Research Award">The Dorothy Jean Usher Memorial Summer Research Award</option>
+        <option value="The Dr. M.E. Ledingham Memorial Summer Research Award">The Dr. M.E. Ledingham Memorial Summer Research Award</option>
+        <option value="The Edna Wakefield Rowe Memorial Summer Research Award">The Edna Wakefield Rowe Memorial Summer Research Award</option>
+        <option value="The J.R. Paine Prostate Cancer Endowment Summer Studentship Award">The J.R. Paine Prostate Cancer Endowment Summer Studentship Award</option>
+        <option value="The Summer Research Fellowship of the College of Physicians and Surgeons of Alberta">The Summer Research Fellowship of the College of Physicians and Surgeons of Alberta</option>
+        <option value="The Vessie Heckbert Memorial Summer Research Award">The Vessie Heckbert Memorial Summer Research Award</option>
+        <option value="The Wynne Rigal Summer Research Award">The Wynne Rigal Summer Research Award</option>
+        <option value="(URI) Undergraduate Researcher Stipend">(URI) Undergraduate Researcher Stipend</option>
+        <option value="Women &amp; Children's Health Research Institute Summer Student Award (WCHRI)">Women &amp; Children's Health Research Institute Summer Student Award (WCHRI)</option>
+        <option value="Other">Other</option>
+      </select>
+
+      <div id="stipendOtherWrap" style="display:none;">
+        <label>Please specify your stipend <span class="required">*</span></label>
+        <input type="text" name="stipendOther" id="stipendOtherField" placeholder="Enter your stipend or funding source">
+      </div>
+    </div>
+
+    <!-- ══ 3. SUPERVISOR DETAILS ══ -->
+    <div class="section-card">
+      <div class="section-title">Supervisor Details</div>
+
+      <div class="two-col">
+        <div>
+          <label>Supervisor First Name <span class="required">*</span></label>
+          <input type="text" name="supervisorFirstName" required>
+        </div>
+        <div>
+          <label>Supervisor Last Name <span class="required">*</span></label>
+          <input type="text" name="supervisorLastName" required>
+        </div>
+      </div>
+
+      <label>Supervisor Email Address <span class="required">*</span></label>
+      <input type="email" name="supervisorEmail" id="supervisorEmail" required>
+
+      <label>Confirm Supervisor Email Address <span class="required">*</span></label>
+      <input type="email" name="supervisorEmailConfirm" id="supervisorEmailConfirm" required placeholder="Re-enter supervisor email">
+      <div class="field-error" id="supervisorEmailError">Email addresses do not match.</div>
+
+      <label>Department <span class="required">*</span></label>
+      <select name="supervisorDepartment" required>
+        <option value="" disabled selected>Select Department</option>
+        <option value="Anesthesiology &amp; Pain Med">Anesthesiology &amp; Pain Med</option>
+        <option value="Biochemistry">Biochemistry</option>
+        <option value="Cell Biology">Cell Biology</option>
+        <option value="Critical Care Medicine">Critical Care Medicine</option>
+        <option value="Dentistry">Dentistry</option>
+        <option value="Emergency Medicine">Emergency Medicine</option>
+        <option value="Family Medicine">Family Medicine</option>
+        <option value="Laboratory Med &amp; Pathology">Laboratory Med &amp; Pathology</option>
+        <option value="Medical Laboratory Science">Medical Laboratory Science</option>
+        <option value="Medical Genetics">Medical Genetics</option>
+        <option value="Med Microbiology/Immunology">Med Microbiology/Immunology</option>
+        <option value="Medicine">Medicine</option>
+        <option value="Obstetrics &amp; Gynecology">Obstetrics &amp; Gynecology</option>
+        <option value="Oncology">Oncology</option>
+        <option value="Ophthalmology and Visual Sciences">Ophthalmology and Visual Sciences</option>
+        <option value="Pediatrics">Pediatrics</option>
+        <option value="Pharmacology">Pharmacology</option>
+        <option value="Physiology">Physiology</option>
+        <option value="Psychiatry">Psychiatry</option>
+        <option value="Radiology/Diagnostic Imaging">Radiology/Diagnostic Imaging</option>
+        <option value="Surgery">Surgery</option>
+      </select>
+
+      <label>Institute Affiliation
+        <span class="hint">(optional)</span>
+      </label>
+      <select name="supervisorInstitute">
+        <option value="">— None / Not applicable —</option>
+        <option value="Alberta Diabetes Institute (ADI)">Alberta Diabetes Institute (ADI)</option>
+        <option value="Alberta Transplant Institute (ATI)">Alberta Transplant Institute (ATI)</option>
+        <option value="Cancer Research Institute of Northern Alberta (CRINA)">Cancer Research Institute of Northern Alberta (CRINA)</option>
+        <option value="Cardiovascular Research Institute (CVRI)">Cardiovascular Research Institute (CVRI)</option>
+        <option value="Li Ka Shing Institute of Virology (LKSIoV)">Li Ka Shing Institute of Virology (LKSIoV)</option>
+        <option value="Neuroscience + Mental Health Institute (NMHI)">Neuroscience + Mental Health Institute (NMHI)</option>
+        <option value="Women + Children's Health Research Institute (WCHRI)">Women + Children's Health Research Institute (WCHRI)</option>
+        <option value="Institute of Smart Augmentative + Restorative Technologies + Health Innovations (iSMART)">Institute of Smart Augmentative + Restorative Technologies + Health Innovations (iSMART)</option>
+      </select>
+    </div>
+
+    <!-- ══ 4. ABSTRACT SUBMISSION ══ -->
+    <div class="section-card">
+      <div class="section-title">Abstract Submission</div>
+
+      <div class="info-box">
+        <p><strong>Abstract Guidelines</strong></p>
+        <ul>
+          <li>Maximum <strong>250 words</strong> (body text only; title and authors are not counted).</li>
+          <li>Do <strong>not</strong> include references, figures, or tables in the abstract body.</li>
+          <li>Use standard scientific writing; avoid abbreviations unless defined on first use.</li>
+        </ul>
+        <p><em>Additional formatting guidelines will be added here.</em></p>
+        <!-- PLACEHOLDER — replace with final abstract guidelines before launch -->
+      </div>
+
+      <!-- Title -->
+      <label>Abstract Title <span class="required">*</span></label>
+      <input type="text" name="title" required placeholder="Full title of your research project">
+
+      <!-- First Author -->
+      <label style="margin-top: 14px;">First Author <span class="required">*</span>
+        <span class="hint">(typically the presenting student)</span>
+      </label>
+      <div class="author-row" style="margin-top: 6px;">
+        <input type="text" name="firstAuthor" id="firstAuthorField" required placeholder="Full name" style="margin-top:0;">
+        <input type="text" name="firstAuthorAffiliation" id="firstAuthorAffiliation" required placeholder="Department, Faculty, Institution" style="margin-top:0;">
+        <div></div>
+      </div>
+
+      <!-- Additional Authors -->
+      <label style="margin-top: 18px;">Additional Authors &amp; Affiliations
+        <span class="hint">(optional — add co-authors in order)</span>
+      </label>
+      <div id="authorsContainer"></div>
+      <button type="button" class="btn-add-author" onclick="addAuthor()">+ Add Author</button>
+
+      <!-- Abstract Body -->
+      <div class="word-count-row">
+        <label for="abstractBody">Abstract Body <span class="required">*</span></label>
+        <span id="wordCountDisplay">0 / 250 words</span>
+      </div>
+      <textarea id="abstractBody" name="abstractBody" rows="12" required
+        placeholder="Enter your abstract text here..."
+        oninput="updateWordCount(this)"></textarea>
+    </div>
+
+    <!-- ══ SUBMIT ══ -->
+    <div class="submit-area">
+      <button type="submit" class="btn-submit" id="submitBtn">Submit Abstract</button>
+      <div class="submitting-msg" id="submittingMsg">Submitting your abstract, please wait&hellip;</div>
+    </div>
+
+  </form>
+
+  <script>
+    // ── Injected by doGet() in Code.js before the page is served ──
+    var PREFILL    = (typeof PREFILL    !== 'undefined') ? PREFILL    : null;
+    var EDIT_TOKEN = (typeof EDIT_TOKEN !== 'undefined') ? EDIT_TOKEN : null;
+
+    // ── Stipend "Other" reveal ──
+    document.querySelector('[name=studentship]').addEventListener('change', function() {
+      var wrap  = document.getElementById('stipendOtherWrap');
+      var field = document.getElementById('stipendOtherField');
+      var show  = this.value === 'Other';
+      wrap.style.display  = show ? 'block' : 'none';
+      field.required      = show;
+      if (!show) field.value = '';
+    });
+
+    // ── Auto-fill first author from student name ──
+    ['studentFirstName', 'studentLastName'].forEach(function(n) {
+      document.querySelector('[name=' + n + ']').addEventListener('input', syncFirstAuthor);
+    });
+
+    function syncFirstAuthor() {
+      var first = document.querySelector('[name=studentFirstName]').value.trim();
+      var last  = document.querySelector('[name=studentLastName]').value.trim();
+      var field = document.getElementById('firstAuthorField');
+      // Only auto-fill if the user hasn't manually edited it
+      if (!field.dataset.manuallyEdited) {
+        field.value = [first, last].filter(Boolean).join(' ');
+      }
+    }
+
+    document.getElementById('firstAuthorField').addEventListener('input', function() {
+      this.dataset.manuallyEdited = '1';
+    });
+
+    // ── Dynamic author rows ──
+    var authorCount = 0;
+
+    function addAuthor() {
+      authorCount++;
+      var id = authorCount;
+      var container = document.getElementById('authorsContainer');
+      var row = document.createElement('div');
+      row.className = 'author-row';
+      row.id = 'author-row-' + id;
+      row.innerHTML =
+        '<input type="text" placeholder="Full name" class="author-name" aria-label="Author name">' +
+        '<input type="text" placeholder="Department, Faculty, Institution" class="author-affiliation" aria-label="Author affiliation">' +
+        '<button type="button" class="btn-remove" onclick="removeAuthor(' + id + ')" aria-label="Remove author">&times;</button>';
+      container.appendChild(row);
+    }
+
+    function removeAuthor(id) {
+      var el = document.getElementById('author-row-' + id);
+      if (el) el.remove();
+    }
+
+    function getAdditionalAuthors() {
+      var rows = document.querySelectorAll('#authorsContainer .author-row');
+      return Array.from(rows).map(function(row) {
+        return {
+          name:        row.querySelector('.author-name').value.trim(),
+          affiliation: row.querySelector('.author-affiliation').value.trim()
+        };
+      }).filter(function(a) { return a.name !== ''; });
+    }
+
+    // ── Word count ──
+    function countWords(text) {
+      var t = text.trim();
+      return t === '' ? 0 : t.split(/\s+/).length;
+    }
+
+    function updateWordCount(textarea) {
+      var count   = countWords(textarea.value);
+      var display = document.getElementById('wordCountDisplay');
+      display.textContent = count + ' / 250 words';
+      if (count > 250) {
+        display.classList.add('over');
+      } else {
+        display.classList.remove('over');
+      }
+    }
+
+    // ── Edit mode: show banner, update button, pre-fill fields ──
+    if (EDIT_TOKEN) {
+      document.getElementById('editBanner').style.display = 'block';
+      document.getElementById('submitBtn').textContent    = 'Update Abstract';
+      document.getElementById('submittingMsg').textContent = 'Updating your abstract, please wait…';
+    }
+
+    if (PREFILL) {
+      (function prefillForm(d) {
+        function setVal(sel, v) {
+          var el = document.querySelector(sel);
+          if (el && v != null) el.value = v;
+        }
+        setVal('[name=studentFirstName]',     d.studentFirstName);
+        setVal('[name=studentLastName]',      d.studentLastName);
+        setVal('[name=studentEmail]',         d.studentEmail);
+        setVal('[name=supervisorEmailConfirm]',d.supervisorEmail);
+        setVal('[name=studentship]',          d.studentship);
+        if (d.studentship === 'Other') {
+          document.getElementById('stipendOtherWrap').style.display = 'block';
+          document.getElementById('stipendOtherField').required = true;
+          setVal('[name=stipendOther]', d.stipendOther);
+        }
+        setVal('[name=supervisorFirstName]',  d.supervisorFirstName);
+        setVal('[name=supervisorLastName]',   d.supervisorLastName);
+        setVal('[name=supervisorEmail]',      d.supervisorEmail);
+        setVal('[name=supervisorEmailConfirm]',d.supervisorEmail);
+        setVal('[name=supervisorDepartment]', d.supervisorDepartment);
+        setVal('[name=supervisorInstitute]',  d.supervisorInstitute);
+        setVal('[name=title]',               d.title);
+        setVal('#firstAuthorField',          d.firstAuthor);
+        setVal('[name=firstAuthorAffiliation]', d.firstAuthorAffiliation);
+        setVal('#abstractBody',              d.abstractBody);
+
+        // Mark first author as manually set so sync doesn't overwrite
+        if (d.firstAuthor) document.getElementById('firstAuthorField').dataset.manuallyEdited = '1';
+
+        // Update word count display
+        var ta = document.getElementById('abstractBody');
+        if (ta) updateWordCount(ta);
+
+        // Pre-fill co-authors
+        (d.additionalAuthors || []).forEach(function(author) {
+          addAuthor();
+          var rows = document.querySelectorAll('.author-row');
+          var last = rows[rows.length - 1];
+          last.querySelector('.author-name').value        = author.name        || '';
+          last.querySelector('.author-affiliation').value = author.affiliation || '';
+        });
+      })(PREFILL);
+    }
+
+    // ── Form submission ──
+    // Supervisor email match validation
+    document.getElementById('supervisorEmailConfirm').addEventListener('input', function() {
+      var err = document.getElementById('supervisorEmailError');
+      var match = this.value === document.getElementById('supervisorEmail').value;
+      err.style.display = match || this.value === '' ? 'none' : 'block';
+    });
+
+    document.getElementById('abstractForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      // Supervisor email match guard
+      var supEmail   = document.getElementById('supervisorEmail').value;
+      var supConfirm = document.getElementById('supervisorEmailConfirm').value;
+      if (supEmail !== supConfirm) {
+        document.getElementById('supervisorEmailError').style.display = 'block';
+        document.getElementById('supervisorEmailConfirm').focus();
+        return;
+      }
+      document.getElementById('supervisorEmailError').style.display = 'none';
+
+      // Word count guard
+      var abstractBody = document.getElementById('abstractBody');
+      if (countWords(abstractBody.value) > 250) {
+        alert('Your abstract exceeds 250 words. Please shorten it before submitting.');
+        abstractBody.focus();
+        return;
+      }
+
+      // Disable submit, show spinner message
+      var btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      document.getElementById('submittingMsg').style.display = 'block';
+
+      var formData = new FormData(this);
+      var obj = Object.fromEntries(formData.entries());
+      obj.additionalAuthors = JSON.stringify(getAdditionalAuthors());
+      if (EDIT_TOKEN) obj.editToken = EDIT_TOKEN;
+
+      google.script.run
+        .withSuccessHandler(function(html) {
+          document.open();
+          document.write(html);
+          document.close();
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          document.getElementById('submittingMsg').style.display = 'none';
+          alert('Submission failed: ' + (err.message || err));
+        })
+        .handleFormSubmit(obj);
+    });
+  </script>
+
+</body>
+</html>

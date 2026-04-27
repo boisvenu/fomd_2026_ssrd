@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body {
+        font-family: Roboto, sans-serif;
+        padding: 16px;
+        color: #003C1E;
+        max-height: 100vh;
+        overflow-y: auto;
+      }
+
+      h2 {
+        color: #005C2E;
+        font-size: 1.2em;
+        margin-bottom: 12px;
+        text-align: center;
+      }
+
+      button {
+        background-color: #005C2E;
+        color: white;
+        border: none;
+        padding: 8px 14px;
+        font-size: 0.95em;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-top: 8px;
+      }
+
+      .section {
+        background-color: #f2fdf2;
+        border: 1px solid #cce5cc;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 0.95em;
+        margin-bottom: 12px;
+      }
+
+      .section ul {
+        padding-left: 20px;
+        margin: 6px 0 0;
+      }
+
+      .section li {
+        margin-bottom: 6px;
+      }
+
+      #result {
+        font-size: 0.95em;
+        margin-top: 10px;
+        text-align: center;
+      }
+
+      .footer {
+        text-align: center;
+        font-size: 0.9em;
+        margin-top: 12px;
+      }
+
+      .footer a {
+        color: #005C2E;
+        text-decoration: none;
+      }
+
+      .footer a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Abstract Emailer & PDF Tool</h2>
+
+    <div class="section">
+      <p><strong>Approval Emails</strong> sent when:</p>
+      <ul>
+        <li>Column O (<em>Approval Status</em>) = <strong>Approved</strong></li>
+        <li>Column S (<em>Email Status</em>) is blank</li>
+      </ul>
+      <div style="text-align: center;">
+        <button onclick="sendApprovals()">Send Approval Emails</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <p><strong>Rejection Emails</strong> sent when:</p>
+      <ul>
+        <li>Column O (<em>Approval Status</em>) = <strong>Not Approved</strong></li>
+        <li>Column S (<em>Email Status</em>) is blank</li>
+      </ul>
+      <p style="margin-top: 8px;"><strong>Optional:</strong> Add reviewer comments in Column P (<em>Review Notes</em>) — included in the rejection email automatically.</p>
+      <div style="text-align: center;">
+        <button onclick="sendRejections()">Send Rejection Emails</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <p><strong>Generate Abstract PDFs</strong>:</p>
+      <ul>
+        <li>Only processes rows where Column Q (<em>PDF Status</em>) is blank</li>
+        <li>Saves PDF to the Abstract Submissions Drive folder</li>
+        <li>Writes the Drive link to Column R (<em>PDF Drive Link</em>)</li>
+      </ul>
+      <div style="text-align: center;">
+        <button onclick="generatePDFs()">Generate PDFs</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <p><strong>Assign Poster Numbers</strong>:</p>
+      <ul>
+        <li>Only processes rows where Column O = <strong>Approved</strong> and Column T (<em>Poster Number</em>) is blank</li>
+        <li>Assigns sequential P-001, P-002, … numbers</li>
+        <li>Safe to run multiple times — will not overwrite existing numbers</li>
+      </ul>
+      <div style="text-align: center;">
+        <button onclick="assignPosters()">Assign Poster Numbers</button>
+      </div>
+    </div>
+
+    <div id="result"></div>
+
+    <div class="footer">
+      <p>For development support, <a href="https://chat.google.com/room/AAQAercUvMM?cls=7" target="_blank">message Jamie Boisvenue on Google Chat</a>.</p>
+    </div>
+
+    <script>
+      function sendRejections() {
+        document.getElementById("result").innerText = "Sending rejection emails...";
+        google.script.run.withSuccessHandler(function(message) {
+          document.getElementById("result").innerText = message;
+        }).sendBatchRejectionEmails();
+      }
+
+      function sendApprovals() {
+        document.getElementById("result").innerText = "Sending approval emails...";
+        google.script.run.withSuccessHandler(function(message) {
+          document.getElementById("result").innerText = message;
+        }).sendBatchApprovalEmails();
+      }
+
+      function generatePDFs() {
+        document.getElementById("result").innerText = "Generating PDFs...";
+        google.script.run.withSuccessHandler(function(message) {
+          document.getElementById("result").innerText = message;
+        }).generateAbstractPDFs();
+      }
+
+      function assignPosters() {
+        document.getElementById("result").innerText = "Assigning poster numbers...";
+        google.script.run.withSuccessHandler(function(message) {
+          document.getElementById("result").innerText = message;
+        }).assignPosterNumbers();
+      }
+    </script>
+  </body>
+</html>
