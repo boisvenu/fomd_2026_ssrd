@@ -204,6 +204,33 @@
       margin-top: 12px;
       color: #005C2E;
       font-style: italic;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .submitting-msg.visible { display: flex; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0,92,46,0.25);
+      border-top-color: #005C2E;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      flex-shrink: 0;
+    }
+
+    .no-changes-msg {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #fff8e1;
+      border: 1px solid #f9a825;
+      border-radius: 6px;
+      color: #5d4200;
+      font-size: 0.9em;
     }
 
     /* ── Error ── */
@@ -213,6 +240,13 @@
       margin-top: 3px;
       display: none;
     }
+    .field-hint {
+      font-size: 0.85em;
+      color: #555;
+      margin: 4px 0 0;
+      line-height: 1.4;
+    }
+    .field-hint a { color: #005C2E; }
   </style>
 </head>
 <body>
@@ -344,6 +378,13 @@
         <label>Please specify your stipend <span class="required">*</span></label>
         <input type="text" name="stipendOther" id="stipendOtherField" placeholder="Enter your stipend or funding source">
       </div>
+
+      <div id="supervisorFundWrap" style="display:none;">
+        <label>Please specify the funding sponsor <span class="required">*</span>
+          <span class="hint">(name of the organization or sponsor providing the funding)</span>
+        </label>
+        <input type="text" name="supervisorFundDetails" id="supervisorFundField" placeholder="e.g. Canadian Institutes of Health Research">
+      </div>
     </div>
 
     <!-- ══ 3. SUPERVISOR DETAILS ══ -->
@@ -363,10 +404,7 @@
 
       <label>Supervisor Email Address <span class="required">*</span></label>
       <input type="email" name="supervisorEmail" id="supervisorEmail" required>
-
-      <label>Confirm Supervisor Email Address <span class="required">*</span></label>
-      <input type="email" name="supervisorEmailConfirm" id="supervisorEmailConfirm" required placeholder="Re-enter supervisor email">
-      <div class="field-error" id="supervisorEmailError">Email addresses do not match.</div>
+      <p class="field-hint">Please double-check this address before submitting — it will be CC'd on all correspondence. Not sure of the address? Search the <a href="https://apps.ualberta.ca/directory" target="_blank" rel="noopener">UAlberta Directory</a>.</p>
 
       <label>Department <span class="required">*</span></label>
       <select name="supervisorDepartment" required>
@@ -421,8 +459,7 @@
           <li>Do <strong>not</strong> include references, figures, or tables in the abstract body.</li>
           <li>Use standard scientific writing; avoid abbreviations unless defined on first use.</li>
         </ul>
-        <p><em>Additional formatting guidelines will be added here.</em></p>
-        <!-- PLACEHOLDER — replace with final abstract guidelines before launch -->
+        <p><em>No special formatting required — your abstract will be automatically formatted upon submission.</em></p>
       </div>
 
       <!-- Title -->
@@ -456,7 +493,13 @@
     <!-- ══ SUBMIT ══ -->
     <div class="submit-area">
       <button type="submit" class="btn-submit" id="submitBtn">Submit Abstract</button>
-      <div class="submitting-msg" id="submittingMsg">Submitting your abstract, please wait&hellip;</div>
+      <div class="submitting-msg" id="submittingMsg">
+        <span class="spinner"></span>
+        <span id="submittingText">Submitting your abstract, please wait&hellip;</span>
+      </div>
+      <div class="no-changes-msg" id="noChangesMsg">
+        Please change at least one field before updating your abstract.
+      </div>
     </div>
 
   </form>
@@ -466,14 +509,23 @@
     var PREFILL    = (typeof PREFILL    !== 'undefined') ? PREFILL    : null;
     var EDIT_TOKEN = (typeof EDIT_TOKEN !== 'undefined') ? EDIT_TOKEN : null;
 
-    // ── Stipend "Other" reveal ──
+    // ── Stipend conditional fields: "Other" and "Supervisor Funded" ──
     document.querySelector('[name=studentship]').addEventListener('change', function() {
-      var wrap  = document.getElementById('stipendOtherWrap');
-      var field = document.getElementById('stipendOtherField');
-      var show  = this.value === 'Other';
-      wrap.style.display  = show ? 'block' : 'none';
-      field.required      = show;
-      if (!show) field.value = '';
+      var otherWrap  = document.getElementById('stipendOtherWrap');
+      var otherField = document.getElementById('stipendOtherField');
+      var fundWrap   = document.getElementById('supervisorFundWrap');
+      var fundField  = document.getElementById('supervisorFundField');
+
+      var isOther   = this.value === 'Other';
+      var isSupFund = this.value === 'Supervisor Funded';
+
+      otherWrap.style.display = isOther   ? 'block' : 'none';
+      otherField.required     = isOther;
+      if (!isOther) otherField.value = '';
+
+      fundWrap.style.display  = isSupFund ? 'block' : 'none';
+      fundField.required      = isSupFund;
+      if (!isSupFund) fundField.value = '';
     });
 
     // ── Auto-fill first author from student name ──
@@ -544,7 +596,7 @@
     if (EDIT_TOKEN) {
       document.getElementById('editBanner').style.display = 'block';
       document.getElementById('submitBtn').textContent    = 'Update Abstract';
-      document.getElementById('submittingMsg').textContent = 'Updating your abstract, please wait…';
+      document.getElementById('submittingText').textContent = 'Updating your abstract, please wait…';
     }
 
     if (PREFILL) {
@@ -556,17 +608,20 @@
         setVal('[name=studentFirstName]',     d.studentFirstName);
         setVal('[name=studentLastName]',      d.studentLastName);
         setVal('[name=studentEmail]',         d.studentEmail);
-        setVal('[name=supervisorEmailConfirm]',d.supervisorEmail);
         setVal('[name=studentship]',          d.studentship);
         if (d.studentship === 'Other') {
           document.getElementById('stipendOtherWrap').style.display = 'block';
           document.getElementById('stipendOtherField').required = true;
           setVal('[name=stipendOther]', d.stipendOther);
         }
+        if (d.studentship === 'Supervisor Funded') {
+          document.getElementById('supervisorFundWrap').style.display = 'block';
+          document.getElementById('supervisorFundField').required = true;
+          setVal('[name=supervisorFundDetails]', d.supervisorFundDetails);
+        }
         setVal('[name=supervisorFirstName]',  d.supervisorFirstName);
         setVal('[name=supervisorLastName]',   d.supervisorLastName);
         setVal('[name=supervisorEmail]',      d.supervisorEmail);
-        setVal('[name=supervisorEmailConfirm]',d.supervisorEmail);
         setVal('[name=supervisorDepartment]', d.supervisorDepartment);
         setVal('[name=supervisorInstitute]',  d.supervisorInstitute);
         setVal('[name=title]',               d.title);
@@ -588,16 +643,22 @@
           last.querySelector('.author-name').value = author.name || '';
         });
       })(PREFILL);
+
+      // Snapshot the prefilled state so we can detect no-op updates
+      originalSnapshot = getFormSnapshot();
+    }
+
+    // ── Edit-mode change detection ──
+    var originalSnapshot = null;
+
+    function getFormSnapshot() {
+      var formData = new FormData(document.getElementById('abstractForm'));
+      var obj = Object.fromEntries(formData.entries());
+      obj.additionalAuthors = JSON.stringify(getAdditionalAuthors());
+      return JSON.stringify(obj);
     }
 
     // ── Form submission ──
-    // Supervisor email match validation
-    document.getElementById('supervisorEmailConfirm').addEventListener('input', function() {
-      var err = document.getElementById('supervisorEmailError');
-      var match = this.value === document.getElementById('supervisorEmail').value;
-      err.style.display = match || this.value === '' ? 'none' : 'block';
-    });
-
     function focusField(el) {
       if (!el) return;
       if (typeof el.scrollIntoView === 'function') {
@@ -628,16 +689,6 @@
         return;
       }
 
-      // Supervisor email match guard
-      var supEmail   = document.getElementById('supervisorEmail').value;
-      var supConfirm = document.getElementById('supervisorEmailConfirm').value;
-      if (supEmail !== supConfirm) {
-        document.getElementById('supervisorEmailError').style.display = 'block';
-        focusField(document.getElementById('supervisorEmailConfirm'));
-        return;
-      }
-      document.getElementById('supervisorEmailError').style.display = 'none';
-
       // At least one co-author required
       var coAuthors = getAdditionalAuthors();
       var coAuthorErr = document.getElementById('additionalAuthorsError');
@@ -652,6 +703,14 @@
       }
       coAuthorErr.style.display = 'none';
 
+      // Edit mode: block submission if nothing has changed
+      var noChangesMsg = document.getElementById('noChangesMsg');
+      if (EDIT_TOKEN && originalSnapshot && getFormSnapshot() === originalSnapshot) {
+        noChangesMsg.style.display = 'block';
+        return;
+      }
+      noChangesMsg.style.display = 'none';
+
       // Word count guard
       var abstractBody = document.getElementById('abstractBody');
       if (countWords(abstractBody.value) > 250) {
@@ -663,7 +722,7 @@
       // Disable submit, show spinner message
       var btn = document.getElementById('submitBtn');
       btn.disabled = true;
-      document.getElementById('submittingMsg').style.display = 'block';
+      document.getElementById('submittingMsg').classList.add('visible');
 
       var formData = new FormData(this);
       var obj = Object.fromEntries(formData.entries());
@@ -672,13 +731,13 @@
 
       google.script.run
         .withSuccessHandler(function(html) {
-          document.open();
-          document.write(html);
-          document.close();
+          var doc = new DOMParser().parseFromString(html, 'text/html');
+          document.head.innerHTML = doc.head.innerHTML;
+          document.body.innerHTML = doc.body.innerHTML;
         })
         .withFailureHandler(function(err) {
           btn.disabled = false;
-          document.getElementById('submittingMsg').style.display = 'none';
+          document.getElementById('submittingMsg').classList.remove('visible');
           alert('Submission failed: ' + (err.message || err));
         })
         .handleFormSubmit(obj);

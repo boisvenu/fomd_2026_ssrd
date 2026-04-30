@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    /*
+      Avery 5395 — Adhesive Name Badges — 2-1/3" × 3-3/8", 8 per sheet
+      Label landscape on sheet: 3.375" wide × 2.333" tall
+      2 columns × 4 rows  |  margins: 0.875" L/R, 0.833" T/B
+    */
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, 'Helvetica Neue', sans-serif;
+      background: #e0e0e0;
+    }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      background: #003C1E;
+      color: #fff;
+      padding: 9px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .toolbar-title { font-size: 0.95em; font-weight: 700; }
+    .toolbar-hint  { font-size: 0.78em; opacity: 0.8; margin-top: 2px; }
+    .btn-print {
+      background: #F4C430;
+      color: #003C1E;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 4px;
+      font-size: 0.92em;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .btn-print:hover { background: #dda820; }
+
+    /* ── Count bar ── */
+    .count-bar {
+      background: #f4faf4;
+      border-bottom: 1px solid #c8e6c8;
+      padding: 6px 16px;
+      font-size: 0.82em;
+      color: #333;
+      display: flex;
+      gap: 16px;
+    }
+    .count-bar span { font-weight: 700; color: #003C1E; }
+
+    /* ── Preview container ── */
+    .preview-area {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    /* ── Section divider between student/supervisor sheets ── */
+    .sheet-divider {
+      font-size: 0.8em;
+      font-weight: 700;
+      color: #555;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      background: #ddd;
+      border-radius: 3px;
+      align-self: flex-start;
+    }
+
+    /* ── Sheet preview at 70% scale ──────────────────────────────────
+       Actual: 8.5in×11in at 96dpi = 816×1056px  →  70%: 571×739px
+       Label:  3.375in×2.333in = 324×224px        →  70%: 227×157px
+       Margin: 0.875in×0.833in = 84×80px          →  70%: 59×56px
+    ──────────────────────────────────────────────────────────────── */
+    .sheet {
+      background: #fff;
+      box-shadow: 0 3px 14px rgba(0,0,0,0.25);
+      width: 571px;
+      height: 739px;
+      padding: 56px 59px;
+      display: grid;
+      grid-template-columns: 227px 227px;
+      grid-template-rows: 157px 157px 157px 157px;
+      gap: 0;
+      flex-shrink: 0;
+    }
+
+    /* ── Badge cell (screen) ── */
+    .badge {
+      width: 227px;
+      height: 157px;
+      border: 1px dashed #bbb;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .badge.empty { background: #fafafa; }
+
+    /* Student header: UAlberta green */
+    .badge-header {
+      color: #fff;
+      font-size: 6px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      padding: 3px 6px;
+      flex-shrink: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .badge-header.student    { background: #003C1E; }
+    .badge-header.supervisor { background: #1a3350; }
+
+    .badge-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 5px 8px;
+      gap: 2px;
+    }
+
+    .badge-name {
+      font-size: 16px;
+      font-weight: 900;
+      color: #111;
+      line-height: 1.1;
+    }
+
+    .badge-line2 {
+      font-size: 10px;
+      color: #333;
+      font-weight: 600;
+    }
+
+    .badge-line3 {
+      font-size: 9px;
+      color: #555;
+    }
+
+    /* ── No-data message ── */
+    .no-data {
+      background: #fff;
+      border-radius: 6px;
+      padding: 32px;
+      color: #666;
+      text-align: center;
+      font-size: 0.9em;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    /* ══════════════════════════════════════════════════════
+       PRINT STYLES
+       Avery 5395: 3.375in × 2.333in per label (landscape)
+       2 cols × 4 rows  |  0.875in L/R  |  0.833in T/B
+    ══════════════════════════════════════════════════════ */
+    @media print {
+      body { background: #fff; }
+      .toolbar      { display: none !important; }
+      .count-bar    { display: none !important; }
+      .sheet-divider { display: none !important; }
+      .preview-area { padding: 0; gap: 0; align-items: flex-start; }
+
+      .sheet {
+        box-shadow: none;
+        width: 8.5in;
+        height: 11in;
+        padding: 0.833in 0.875in;
+        grid-template-columns: 3.375in 3.375in;
+        grid-template-rows: 2.333in 2.333in 2.333in 2.333in;
+        page-break-after: always;
+        break-after: page;
+      }
+
+      .badge         { width: 3.375in; height: 2.333in; border: 1px dashed #ccc; }
+      .badge-header  { font-size: 7pt; padding: 3pt 6pt; }
+      .badge-body    { padding: 6pt 10pt; gap: 2pt; }
+      .badge-name    { font-size: 22pt; }
+      .badge-line2   { font-size: 14pt; }
+      .badge-line3   { font-size: 12pt; }
+    }
+
+    @page { size: letter portrait; margin: 0; }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <div>
+      <div class="toolbar-title">Name Badges &mdash; Avery 5395</div>
+      <div class="toolbar-hint">Set printer to &ldquo;Actual Size&rdquo; / 100% &mdash; no scaling</div>
+    </div>
+    <button class="btn-print" onclick="window.print()">&#128424; Print</button>
+  </div>
+  <div class="count-bar" id="countBar" style="display:none;">
+    Students: <span id="countStudents">0</span> &nbsp;&nbsp;
+    Supervisors: <span id="countSupervisors">0</span> &nbsp;&nbsp;
+    Total badges: <span id="countTotal">0</span>
+  </div>
+
+  <div class="preview-area" id="previewArea"></div>
+
+  <script>
+    var BADGE_DATA = (typeof BADGE_DATA !== 'undefined') ? BADGE_DATA : { students: [], supervisors: [] };
+    var PER_SHEET  = 8;
+    var area       = document.getElementById('previewArea');
+
+    var students    = BADGE_DATA.students    || [];
+    var supervisors = BADGE_DATA.supervisors || [];
+    var allBadges   = buildBadgeList(students, supervisors);
+
+    if (allBadges.length === 0) {
+      area.innerHTML =
+        '<div class="no-data">' +
+          'No approved abstracts with poster numbers found.<br>' +
+          'Approve submissions and assign poster numbers first.' +
+        '</div>';
+    } else {
+      // Count bar
+      var bar = document.getElementById('countBar');
+      bar.style.display = 'flex';
+      document.getElementById('countStudents').textContent    = students.length;
+      document.getElementById('countSupervisors').textContent = supervisors.length;
+      document.getElementById('countTotal').textContent       = allBadges.length;
+
+      renderSheets(allBadges);
+    }
+
+    /* Build the flat badge list: students first, then supervisors.
+       Each item carries a type so we can render it differently. */
+    function buildBadgeList(students, supervisors) {
+      var list = [];
+      students.forEach(function(s)    { list.push({ type: 'student',    data: s }); });
+      supervisors.forEach(function(s) { list.push({ type: 'supervisor', data: s }); });
+      return list;
+    }
+
+    function renderSheets(badges) {
+      var padded = badges.slice();
+      while (padded.length % PER_SHEET !== 0) padded.push(null);
+
+      var prevType = null;
+
+      for (var s = 0; s < padded.length / PER_SHEET; s++) {
+        var sliceStart = s * PER_SHEET;
+        var sliceEnd   = sliceStart + PER_SHEET;
+        var slice      = padded.slice(sliceStart, sliceEnd);
+
+        // Label the first sheet of each badge type (students vs supervisors)
+        var firstReal = slice.find(function(b) { return b !== null; });
+        if (firstReal && firstReal.type !== prevType) {
+          var div = document.createElement('div');
+          div.className   = 'sheet-divider';
+          div.textContent = firstReal.type === 'student' ? 'Student Badges' : 'Supervisor Badges';
+          area.appendChild(div);
+          prevType = firstReal.type;
+        }
+
+        var sheet = document.createElement('div');
+        sheet.className = 'sheet';
+
+        slice.forEach(function(item) {
+          var cell = document.createElement('div');
+
+          if (!item) {
+            cell.className = 'badge empty';
+          } else if (item.type === 'student') {
+            cell.className = 'badge';
+            cell.innerHTML =
+              '<div class="badge-header student">' +
+                '<span>FoMD Summer Students&rsquo; Research Day 2026</span>' +
+                '<span>Student</span>' +
+              '</div>' +
+              '<div class="badge-body">' +
+                '<div class="badge-name">'  + esc(item.data.name)         + '</div>' +
+                '<div class="badge-line2">' + esc(item.data.labLine)      + '</div>' +
+                '<div class="badge-line3">Poster ' + esc(item.data.posterNumber) + '</div>' +
+              '</div>';
+          } else {
+            // supervisor
+            var instHtml = item.data.institute
+              ? '<div class="badge-line3">' + esc(item.data.institute) + '</div>'
+              : '';
+            cell.className = 'badge';
+            cell.innerHTML =
+              '<div class="badge-header supervisor">' +
+                '<span>FoMD Summer Students&rsquo; Research Day 2026</span>' +
+                '<span>Supervisor</span>' +
+              '</div>' +
+              '<div class="badge-body">' +
+                '<div class="badge-name">'  + esc(item.data.name)       + '</div>' +
+                '<div class="badge-line2">' + esc(item.data.department) + '</div>' +
+                instHtml +
+              '</div>';
+          }
+
+          sheet.appendChild(cell);
+        });
+
+        area.appendChild(sheet);
+      }
+    }
+
+    function esc(s) {
+      return String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+  </script>
+</body>
+</html>

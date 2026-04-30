@@ -263,7 +263,7 @@
     <!-- Top bar: filter + load + stats -->
     <div class="top-bar">
       <select id="reviewFilter" onchange="if (allAbstracts.length) applyFilter()">
-        <option value="unprocessed">Unprocessed only</option>
+        <option value="unprocessed">Requires Review only</option>
         <option value="all">All submissions</option>
         <option value="approved">Approved only</option>
         <option value="rejected">Not Approved only</option>
@@ -351,7 +351,7 @@
         var badgeClass = a.approvalStatus === 'Approved'     ? 'badge-approved'
                        : a.approvalStatus === 'Not Approved' ? 'badge-rejected'
                        : 'badge-unprocessed';
-        var statusLabel = a.approvalStatus || 'Unprocessed';
+        var statusLabel = a.approvalStatus || 'Requires Review';
 
         var pdfHtml = a.pdfLink
           ? '<a class="pdf-link" href="' + esc(a.pdfLink) + '" target="_blank">View PDF ↗</a>'
@@ -401,7 +401,7 @@
               '<div class="btn-row">' +
                 '<button class="btn-approve" onclick="saveDecision(\'Approved\')">✓ Approve</button>' +
                 '<button class="btn-reject"  onclick="saveDecision(\'Not Approved\')">✗ Reject</button>' +
-                '<button class="btn-reset"   onclick="saveDecision(\'Unprocessed\')">↺ Reset</button>' +
+                '<button class="btn-reset"   onclick="saveDecision(\'Requires Review\')">↺ Reset</button>' +
               '</div>' +
             '</div>' +
           '</div>';
@@ -442,7 +442,7 @@
             updateStats(allAbstracts);
             renderAbstract();
 
-            var msg = '✓ ' + (status || 'Unprocessed');
+            var msg = '✓ ' + (status || 'Requires Review');
             if (result && result.posterNumber) msg += ' — ' + result.posterNumber + ' assigned';
             showStatus(msg);
           })

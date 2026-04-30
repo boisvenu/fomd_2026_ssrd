@@ -76,6 +76,8 @@
       button.btn-neutral  { background: #5a6268; }
       button.btn-neutral:hover  { background: #3d4449; }
       button.btn-inline   { width: auto; display: inline-block; padding: 5px 11px; margin-top: 0; }
+      button.btn-open     { background: #F4C430; color: #003C1E; font-weight: 600; }
+      button.btn-open:hover { background: #d4a800; }
 
       .btn-row {
         display: flex;
@@ -105,6 +107,21 @@
       }
       .status-msg.show { display: block; }
       .status-msg.error { background: #fdf0f0; border-color: #f5b8b8; color: #7a1a1a; }
+      .status-msg.loading {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .spinner {
+        width: 13px;
+        height: 13px;
+        border: 2px solid #b2d8b2;
+        border-top-color: #005C2E;
+        border-radius: 50%;
+        flex-shrink: 0;
+        animation: spin 0.7s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
 
       /* ── Stats bar ── */
       .stats-bar {
@@ -230,23 +247,21 @@
     </style>
   </head>
   <body>
-    <p class="page-title">Abstract Admin Tools</p>
+    <p class="page-title">Abstract Sidebar</p>
 
     <!-- ════════════════════════════════════════
          SECTION 1 — Abstract Review
     ════════════════════════════════════════ -->
     <div class="section-header open" onclick="toggleSection(this)">
-      Abstract Review
-      <span style="display:flex;align-items:center;gap:8px;">
-        <button class="btn-inline" style="background:#F4C430;color:#003C1E;font-size:0.78em;padding:2px 8px;margin:0;" title="Open expanded review window" onclick="event.stopPropagation(); openExpandedReview();">⤢ Expand</button>
-        <span class="arrow">▼</span>
-      </span>
+      Abstract Review <span class="arrow">▼</span>
     </div>
     <div class="section-body open">
 
+      <button class="btn-open" onclick="openExpandedReview()">⤢ Open Expanded Review</button>
+
       <div class="filter-row">
         <select id="reviewFilter">
-          <option value="unprocessed">Unprocessed only</option>
+          <option value="unprocessed">Requires Review only</option>
           <option value="all">All submissions</option>
           <option value="approved">Approved only</option>
           <option value="rejected">Not Approved only</option>
@@ -289,7 +304,7 @@
             <button class="btn-approve" onclick="saveDecision('Approved')">✓ Approve</button>
             <button class="btn-reject"  onclick="saveDecision('Not Approved')">✗ Reject</button>
           </div>
-          <button class="btn-neutral" style="margin-top:6px;" onclick="saveDecision('Unprocessed')">↺ Reset to Unprocessed</button>
+          <button class="btn-neutral" style="margin-top:6px;" onclick="saveDecision('Requires Review')">↺ Reset to Requires Review</button>
         </div>
       </div>
 
@@ -304,14 +319,12 @@
          SECTION 2 — Email Notifications
     ════════════════════════════════════════ -->
     <div class="section-header" onclick="toggleSection(this)">
-      Email Notifications
-      <span style="display:flex;align-items:center;gap:8px;">
-        <button class="btn-inline" style="background:#F4C430;color:#003C1E;font-size:0.78em;padding:2px 8px;margin:0;" title="Customize email templates" onclick="event.stopPropagation(); openEmailTemplateDialog();">⤢ Customize</button>
-        <span class="arrow">▼</span>
-      </span>
+      Email Notifications <span class="arrow">▼</span>
     </div>
     <div class="section-body">
-      <p class="note">
+      <button class="btn-open" onclick="openEmailTemplateDialog()">⤢ Customize Email Templates</button>
+
+      <p class="note" style="margin-top:14px;">
         <strong>Approval emails</strong> — sent to rows where Approval Status = <em>Approved</em>
         and Email Status (col U) is blank.
       </p>
@@ -361,6 +374,45 @@
       <div class="status-msg" id="listStatus"></div>
     </div>
 
+    <!-- ════════════════════════════════════════
+         SECTION — Name Badges (Avery 5395)
+    ════════════════════════════════════════ -->
+    <div class="section-header" onclick="toggleSection(this)">
+      Name Badges (Avery 5395) <span class="arrow">▼</span>
+    </div>
+    <div class="section-body">
+      <p class="note">
+        Prints name badges for all approved abstracts. Students come first (sorted by
+        poster number), then supervisors (sorted alphabetically) — duplicates removed.
+      </p>
+      <p class="note">
+        <strong>Student:</strong> name · [Supervisor] Lab · Poster #<br>
+        <strong>Supervisor:</strong> Dr. [Name] · Department · Institute
+      </p>
+      <button onclick="printNameBadges()">Preview &amp; Print Name Badges</button>
+      <div class="status-msg" id="badgeStatus"></div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         SECTION — Poster Tags (Avery 5395)
+    ════════════════════════════════════════ -->
+    <div class="section-header" onclick="toggleSection(this)">
+      Poster Tags (Avery 5395) <span class="arrow">▼</span>
+    </div>
+    <div class="section-body">
+      <p class="note">
+        Prints poster tags for all approved abstracts with assigned poster numbers,
+        sorted by poster number. Each tag shows the <strong>poster number</strong>
+        and <strong>student / supervisor last names</strong>.
+      </p>
+      <p class="note">
+        Formatted for <strong>Avery 5395</strong> (2 columns × 4 rows, 8 per sheet).
+        In the print dialog, select <strong>Actual Size</strong> / 100% — no scaling.
+      </p>
+      <button onclick="printPosterTags()">Preview &amp; Print Poster Tags</button>
+      <div class="status-msg" id="tagStatus"></div>
+    </div>
+
     <div class="footer">
       <p>For help, <a href="https://chat.google.com/room/AAQAercUvMM?cls=7" target="_blank">message Jamie on Google Chat</a>.</p>
     </div>
@@ -370,7 +422,9 @@
       // EXPANDED REVIEW DIALOG
       // ──────────────────────────────────────────
       function openExpandedReview() {
+        showLoading('reviewStatus', 'Opening review panel…');
         google.script.run
+          .withSuccessHandler(function() { hideStatus('reviewStatus'); })
           .withFailureHandler(function(err) {
             showStatus('reviewStatus', 'Could not open dialog: ' + err.message, true);
           })
@@ -378,7 +432,9 @@
       }
 
       function openEmailTemplateDialog() {
+        showLoading('emailStatus', 'Opening email editor…');
         google.script.run
+          .withSuccessHandler(function() { hideStatus('emailStatus'); })
           .withFailureHandler(function(err) {
             showStatus('emailStatus', 'Could not open dialog: ' + err.message, true);
           })
@@ -470,7 +526,7 @@
         var badgeClass = a.approvalStatus === 'Approved'     ? 'badge-approved'
                        : a.approvalStatus === 'Not Approved' ? 'badge-rejected'
                        : 'badge-unprocessed';
-        var statusLabel = a.approvalStatus || 'Unprocessed';
+        var statusLabel = a.approvalStatus || 'Requires Review';
 
         var coAuthorHtml = a.coAuthors
           ? '<span class="field-label">Co-Authors</span><span class="field-value">' + esc(a.coAuthors) + '</span>'
@@ -538,7 +594,7 @@
 
             updateStats(allAbstracts);
             renderAbstract();
-            var msg = '✓ Saved: ' + (status || 'Unprocessed');
+            var msg = '✓ Saved: ' + (status || 'Requires Review');
             if (result && result.posterNumber) {
               msg += ' — assigned ' + result.posterNumber;
             }
@@ -599,12 +655,40 @@
       }
 
       // ──────────────────────────────────────────
+      // NAME BADGES (AVERY 5395)
+      // ──────────────────────────────────────────
+      function printNameBadges() {
+        showStatus('badgeStatus', 'Preparing badges…');
+        google.script.run
+          .withSuccessHandler(function() { hideStatus('badgeStatus'); })
+          .withFailureHandler(function(err) { showStatus('badgeStatus', 'Error: ' + err.message, true); })
+          .showNameBadgesDialog();
+      }
+
+      // ──────────────────────────────────────────
+      // POSTER TAGS (AVERY 5395)
+      // ──────────────────────────────────────────
+      function printPosterTags() {
+        showStatus('tagStatus', 'Preparing labels…');
+        google.script.run
+          .withSuccessHandler(function() { hideStatus('tagStatus'); })
+          .withFailureHandler(function(err) { showStatus('tagStatus', 'Error: ' + err.message, true); })
+          .showPosterLabelsDialog();
+      }
+
+      // ──────────────────────────────────────────
       // UTILITIES
       // ──────────────────────────────────────────
       function showStatus(id, text, isError) {
         var el = document.getElementById(id);
         el.textContent = text;
         el.className = 'status-msg show' + (isError ? ' error' : '');
+      }
+
+      function showLoading(id, text) {
+        var el = document.getElementById(id);
+        el.className = 'status-msg loading';
+        el.innerHTML = '<div class="spinner"></div><span>' + text + '</span>';
       }
 
       function hideStatus(id) {

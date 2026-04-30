@@ -10,31 +10,32 @@ const SUBMISSIONS_FOLDER_ID = PROPS.getProperty('SUBMISSIONS_FOLDER_ID');
 const TEMPLATE_DOC_ID       = PROPS.getProperty('TEMPLATE_DOC_ID');
 
 // Single source of truth for all column positions (0-based)
-// A   B   C   D   E   F   G   H   I   J   K   L   M   N   O   P   Q   R   S   T   U   V
-// 0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21
+// A   B   C   D   E   F   G   H   I   J   K   L   M   N   O   P   Q   R   S   T   U   V   W
+// 0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22
 const COL = {
-  TIMESTAMP:       0,   // A — auto
-  STUDENT_FIRST:   1,   // B — form
-  STUDENT_LAST:    2,   // C — form
-  STUDENT_EMAIL:   3,   // D — form
-  STUDENTSHIP:     4,   // E — form
-  STIPEND_OTHER:   5,   // F — form (populated when Stipend = "Other")
-  SUP_FIRST:       6,   // G — form
-  SUP_LAST:        7,   // H — form
-  SUP_EMAIL:       8,   // I — form
-  DEPARTMENT:      9,   // J — form
-  INSTITUTE:       10,  // K — form (optional institute affiliation)
-  TITLE:           11,  // L — form
-  FIRST_AUTHOR:    12,  // M — form
-  CO_AUTHORS:      13,  // N — form
-  ABSTRACT_BODY:   14,  // O — form
-  APPROVAL_STATUS: 15,  // P — admin dropdown: Approved / Not Approved
-  REVIEW_NOTES:    16,  // Q — admin fills (included in rejection email)
-  PDF_STATUS:      17,  // R — auto
-  PDF_LINK:        18,  // S — auto (Drive URL)
-  EMAIL_STATUS:    19,  // T — auto
-  POSTER_NUMBER:   20,  // U — auto (assigned via assignPosterNumbers)
-  EDIT_TOKEN:      21   // V — system (powers edit links)
+  TIMESTAMP:        0,   // A — auto
+  STUDENT_FIRST:    1,   // B — form
+  STUDENT_LAST:     2,   // C — form
+  STUDENT_EMAIL:    3,   // D — form
+  STUDENTSHIP:      4,   // E — form
+  STIPEND_OTHER:    5,   // F — form (populated when Stipend = "Other")
+  SUP_FUND_DETAILS: 6,   // G — form (populated when Stipend = "Supervisor Funded")
+  SUP_FIRST:        7,   // H — form
+  SUP_LAST:         8,   // I — form
+  SUP_EMAIL:        9,   // J — form
+  DEPARTMENT:       10,  // K — form
+  INSTITUTE:        11,  // L — form (optional institute affiliation)
+  TITLE:            12,  // M — form
+  FIRST_AUTHOR:     13,  // N — form
+  CO_AUTHORS:       14,  // O — form
+  ABSTRACT_BODY:    15,  // P — form
+  APPROVAL_STATUS:  16,  // Q — admin dropdown: Approved / Not Approved
+  REVIEW_NOTES:     17,  // R — admin fills (included in rejection email)
+  PDF_STATUS:       18,  // S — auto
+  PDF_LINK:         19,  // T — auto (Drive URL)
+  EMAIL_STATUS:     20,  // U — auto
+  POSTER_NUMBER:    21,  // V — auto (assigned via assignPosterNumbers)
+  EDIT_TOKEN:       22   // W — system (powers edit links)
 };
 
 // ===== SERVE FORM =====
@@ -84,7 +85,7 @@ function errorPage(title, body) {
 // ===== ADMIN MENU =====
 function onOpen() {
   SpreadsheetApp.getUi()
-    .createMenu('Abstract Admin')
+    .createMenu('Abstract Sidebar')
     .addItem('Open Admin Sidebar',               'showSidebar')
     .addItem('Open Abstract Review (expanded)',  'showReviewDialog')
     .addItem('Customize Email Templates',        'showEmailTemplateDialog')
@@ -99,7 +100,7 @@ function onOpen() {
 }
 
 function showSidebar() {
-  const html = HtmlService.createHtmlOutputFromFile('Sidebar').setTitle('Abstract Admin Tools');
+  const html = HtmlService.createHtmlOutputFromFile('Sidebar').setTitle('Abstract Sidebar');
   SpreadsheetApp.getUi().showSidebar(html);
 }
 
@@ -146,7 +147,7 @@ function onEdit(e) {
 
   if (col === COL.APPROVAL_STATUS + 1 && row > 1) {
     const status = (e.value || '').toString().trim().toLowerCase();
-    const rowRange = sheet.getRange(row, 1, 1, 22);
+    const rowRange = sheet.getRange(row, 1, 1, 23);
 
     if (status === 'approved') {
       rowRange.setBackgroundColor('#D9F2D9');
@@ -199,29 +200,30 @@ function handleNewSubmission(formObj) {
     formObj.studentLastName,                          // C: Student Last Name
     formObj.studentEmail,                             // D: Student Email
     formObj.studentship,                              // E: Stipend Support
-    formObj.stipendOther     || '',                   // F: Stipend Other
-    formObj.supervisorFirstName,                      // G: Supervisor First Name
-    formObj.supervisorLastName,                       // H: Supervisor Last Name
-    formObj.supervisorEmail,                          // I: Supervisor Email
-    formObj.supervisorDepartment,                     // J: Department
-    formObj.supervisorInstitute  || '',               // K: Institute Affiliation
-    formObj.title,                                    // L: Abstract Title
-    formObj.firstAuthor,                              // M: First Author
-    coAuthorsFormatted,                               // N: Additional Authors
-    formObj.abstractBody,                             // O: Abstract Body
-    'Unprocessed',                                    // P: Approval Status   ← admin
-    '',                                               // Q: Review Notes      ← admin
-    '',                                               // R: PDF Status        ← auto
-    '',                                               // S: PDF Drive Link    ← auto
-    '',                                               // T: Email Status      ← auto
-    '',                                               // U: Poster Number     ← auto
-    token                                             // V: Edit Token        ← system
+    formObj.stipendOther          || '',              // F: Stipend Other
+    formObj.supervisorFundDetails || '',              // G: Supervisor Fund Details
+    formObj.supervisorFirstName,                      // H: Supervisor First Name
+    formObj.supervisorLastName,                       // I: Supervisor Last Name
+    formObj.supervisorEmail,                          // J: Supervisor Email
+    formObj.supervisorDepartment,                     // K: Department
+    formObj.supervisorInstitute   || '',              // L: Institute Affiliation
+    formObj.title,                                    // M: Abstract Title
+    formObj.firstAuthor,                              // N: First Author
+    coAuthorsFormatted,                               // O: Additional Authors
+    formObj.abstractBody,                             // P: Abstract Body
+    'Requires Review',                                // Q: Approval Status   ← admin
+    '',                                               // R: Review Notes      ← admin
+    '',                                               // S: PDF Status        ← auto
+    '',                                               // T: PDF Drive Link    ← auto
+    '',                                               // U: Email Status      ← auto
+    '',                                               // V: Poster Number     ← auto
+    token                                             // W: Edit Token        ← system
   ]);
 
   const lastRow = sheet.getLastRow();
   
-  // Apply yellow background for Unprocessed status
-  sheet.getRange(lastRow, 1, 1, 22).setBackgroundColor('#FFFACD'); // Soft yellow (lemon chiffon)
+  // Apply yellow background for Requires Review status
+  sheet.getRange(lastRow, 1, 1, 23).setBackgroundColor('#FFFACD'); // Soft yellow (lemon chiffon)
   try {
     const pdf = generateAndSavePDF(formObj, additionalAuthors);
     const ts  = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
@@ -237,6 +239,7 @@ function handleNewSubmission(formObj) {
 
   MailApp.sendEmail({
     to: formObj.studentEmail,
+    cc: formObj.supervisorEmail || '',
     subject: "2026 FoMD Summer Students' Research Day – Abstract Submission Confirmation",
     htmlBody: `
       <p>Dear ${formObj.studentFirstName},</p>
@@ -281,7 +284,8 @@ function handleEdit(formObj) {
   sheet.getRange(rowIndex, COL.STUDENT_LAST     + 1).setValue(formObj.studentLastName);
   sheet.getRange(rowIndex, COL.STUDENT_EMAIL    + 1).setValue(formObj.studentEmail);
   sheet.getRange(rowIndex, COL.STUDENTSHIP      + 1).setValue(formObj.studentship);
-  sheet.getRange(rowIndex, COL.STIPEND_OTHER    + 1).setValue(formObj.stipendOther    || '');
+  sheet.getRange(rowIndex, COL.STIPEND_OTHER    + 1).setValue(formObj.stipendOther          || '');
+  sheet.getRange(rowIndex, COL.SUP_FUND_DETAILS + 1).setValue(formObj.supervisorFundDetails || '');
   sheet.getRange(rowIndex, COL.SUP_FIRST        + 1).setValue(formObj.supervisorFirstName);
   sheet.getRange(rowIndex, COL.SUP_LAST         + 1).setValue(formObj.supervisorLastName);
   sheet.getRange(rowIndex, COL.SUP_EMAIL        + 1).setValue(formObj.supervisorEmail);
@@ -341,9 +345,10 @@ function getSubmissionByToken(token) {
       studentFirstName:     row[COL.STUDENT_FIRST],
       studentLastName:      row[COL.STUDENT_LAST],
       studentEmail:         row[COL.STUDENT_EMAIL],
-      studentship:          row[COL.STUDENTSHIP],
-      stipendOther:         row[COL.STIPEND_OTHER],
-      supervisorFirstName:  row[COL.SUP_FIRST],
+      studentship:            row[COL.STUDENTSHIP],
+      stipendOther:           row[COL.STIPEND_OTHER],
+      supervisorFundDetails:  row[COL.SUP_FUND_DETAILS],
+      supervisorFirstName:    row[COL.SUP_FIRST],
       supervisorLastName:   row[COL.SUP_LAST],
       supervisorEmail:      row[COL.SUP_EMAIL],
       supervisorDepartment: row[COL.DEPARTMENT],
@@ -380,8 +385,7 @@ function generateAndSavePDF(formObj, additionalAuthors) {
   const submissionDate = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
   const safeName = formObj.studentLastName + '_' + submissionDate;
 
-  const copyMeta = Drive.Files.copy({ title: safeName }, TEMPLATE_DOC_ID, { supportsAllDrives: true });
-  const copyId   = copyMeta.id;
+  const copyId = DriveApp.getFileById(TEMPLATE_DOC_ID).makeCopy(safeName).getId();
 
   const doc  = DocumentApp.openById(copyId);
   const body = doc.getBody();
@@ -389,24 +393,33 @@ function generateAndSavePDF(formObj, additionalAuthors) {
   const coAuthorNames = additionalAuthors.map(a => a.name).filter(Boolean);
   const coAuthorsLine = coAuthorNames.length > 0 ? ', ' + coAuthorNames.join(', ') : '';
   body.replaceText('\\{\\{CO_AUTHORS\\}\\}', escapeDollarSigns(coAuthorsLine));
-  replaceWithParagraphs(body, '{{ABSTRACT_BODY}}', (formObj.abstractBody || '').split('\n'));
+  replaceWithParagraphs(body, '{{ABSTRACT_BODY}}', (formObj.abstractBody || '').split('\n'), 'Times New Roman', 10);
 
   const stipendDisplay = formObj.studentship === 'Other' && formObj.stipendOther
     ? 'Other – ' + formObj.stipendOther
-    : (formObj.studentship || '');
+    : formObj.studentship === 'Supervisor Funded' && formObj.supervisorFundDetails
+      ? 'Supervisor Funded – ' + formObj.supervisorFundDetails
+      : (formObj.studentship || '');
 
   const singleLine = {
-    '{{TITLE}}':                    formObj.title               || '',
+    '{{TITLE}}':                    (formObj.title || '').toUpperCase(),
     '{{STUDENT_NAME}}':             formObj.studentFirstName + ' ' + formObj.studentLastName,
     '{{STUDENT_EMAIL}}':            formObj.studentEmail         || '',
     '{{STUDENTSHIP}}':              stipendDisplay,
     '{{SUPERVISOR_NAME}}':          formObj.supervisorFirstName + ' ' + formObj.supervisorLastName,
     '{{SUPERVISOR_EMAIL}}':         formObj.supervisorEmail      || '',
     '{{DEPARTMENT}}':               formObj.supervisorDepartment || '',
-    '{{INSTITUTE}}':                formObj.supervisorInstitute  || '',
+    '{{INSTITUTE}}':                formObj.supervisorInstitute  || null,
     '{{FIRST_AUTHOR}}':    formObj.firstAuthor || '',
     '{{SUBMISSION_DATE}}': Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'MMMM d, yyyy')
   };
+
+  // {{INSTITUTE}} is null when no affiliation — strip the surrounding " & " so the
+  // supervisor line doesn't end with a dangling ampersand.
+  if (singleLine['{{INSTITUTE}}'] === null) {
+    body.replaceText('\\s*&\\s*\\{\\{INSTITUTE\\}\\}', '');
+    delete singleLine['{{INSTITUTE}}'];
+  }
 
   for (const [placeholder, value] of Object.entries(singleLine)) {
     body.replaceText(placeholder, escapeDollarSigns(value));
@@ -424,7 +437,7 @@ function generateAndSavePDF(formObj, additionalAuthors) {
   pdfFile.setName(safeName + '.pdf');
 
   // Trash the temporary doc copy
-  Drive.Files.trash(copyId, { supportsAllDrives: true });
+  DriveApp.getFileById(copyId).setTrashed(true);
 
   return { blob: pdfBlob, url: 'https://drive.google.com/file/d/' + pdfFile.getId() + '/view' };
 }
@@ -434,7 +447,7 @@ function generateAndSavePDF(formObj, additionalAuthors) {
 // of its formatting) is preserved exactly. Additional lines are inserted as copies.
 // insertParagraph() can strip paragraph-level indent attributes from the inserted clone, so
 // we re-apply them explicitly using direct setter methods rather than setAttributes().
-function replaceWithParagraphs(body, placeholder, lines) {
+function replaceWithParagraphs(body, placeholder, lines, forceFontFamily, forceFontSize) {
   const result = body.findText(placeholder);
   if (!result) return;
 
@@ -444,34 +457,63 @@ function replaceWithParagraphs(body, placeholder, lines) {
   const nonEmpty = lines.filter(l => l.trim() !== '');
   if (nonEmpty.length === 0) nonEmpty.push('');
 
+  // Capture text-level style from the placeholder before setText() clears it.
+  // Explicit overrides take priority — getFontFamily() often returns null when the font
+  // is inherited from the document/paragraph style rather than set as a character attribute.
+  const textEl     = element.getType() === DocumentApp.ElementType.TEXT ? element : element.editAsText();
+  const offset     = result.getStartOffset();
+  const fontFamily = forceFontFamily  || textEl.getFontFamily(offset);
+  const fontSize   = forceFontSize    || textEl.getFontSize(offset);
+  const isBold     = textEl.isBold(offset);
+  const isItalic   = textEl.isItalic(offset);
+
+  // Forces font at both the paragraph level (default) and character level (override),
+  // so no layer of the document model can apply a different font.
+  function applyTextStyle(p) {
+    const paraAttrs = {};
+    if (fontFamily !== null) paraAttrs[DocumentApp.Attribute.FONT_FAMILY] = fontFamily;
+    if (fontSize   !== null) paraAttrs[DocumentApp.Attribute.FONT_SIZE]   = fontSize;
+    if (Object.keys(paraAttrs).length > 0) p.setAttributes(paraAttrs);
+
+    const t   = p.editAsText();
+    const len = t.getText().length;
+    if (len === 0) return;
+    if (fontFamily !== null) t.setFontFamily(0, len - 1, fontFamily);
+    if (fontSize   !== null) t.setFontSize(0, len - 1, fontSize);
+    if (isBold     !== null) t.setBold(0, len - 1, isBold);
+    if (isItalic   !== null) t.setItalic(0, len - 1, isItalic);
+  }
+
   // Replace text in the first paragraph (preserves original paragraph object and its attributes)
   para.editAsText().setText(nonEmpty[0]);
+  applyTextStyle(para);
 
-  // Read paragraph-level style from the template paragraph once, before the loop
-  const alignment       = para.getAlignment();
-  const heading         = para.getHeading();
-  const indentStart     = para.getIndentStart();
-  const indentFirstLine = para.getIndentFirstLine();
-  const indentEnd       = para.getIndentEnd();
-  const lineSpacing     = para.getLineSpacing();
-  const spacingBefore   = para.getSpacingBefore();
-  const spacingAfter    = para.getSpacingAfter();
+  // Capture all paragraph-level attributes from the template paragraph at once.
+  // Using getAttributes() catches inherited values that individual getters return null for.
+  // Strip font/heading keys — those are applied separately so they don't interfere.
+  const heading      = para.getHeading();
+  const templateAttrs = para.getAttributes();
+  [
+    DocumentApp.Attribute.HEADING,
+    DocumentApp.Attribute.FONT_FAMILY,
+    DocumentApp.Attribute.FONT_SIZE,
+    DocumentApp.Attribute.BOLD,
+    DocumentApp.Attribute.ITALIC
+  ].forEach(function(k) { delete templateAttrs[k]; });
+  // Remove null-valued keys — setAttributes treats null as "clear this attribute"
+  Object.keys(templateAttrs).forEach(function(k) {
+    if (templateAttrs[k] === null || templateAttrs[k] === undefined) delete templateAttrs[k];
+  });
 
-  // Insert additional lines as new paragraphs, re-applying paragraph formatting explicitly
+  // Insert additional lines as fresh paragraphs.
+  // Order: setHeading first (resets everything), then re-apply template attrs,
+  // then applyTextStyle last so font always wins.
   for (let i = 1; i < nonEmpty.length; i++) {
     const insertIndex = body.getChildIndex(para) + i;
-    const newPara = para.copy();
-    newPara.editAsText().setText(nonEmpty[i]);
-    const inserted = body.insertParagraph(insertIndex, newPara);
-    // Re-apply paragraph-level formatting via direct setters (more reliable than setAttributes)
-    if (alignment       !== null) inserted.setAlignment(alignment);
-    if (heading         !== null) inserted.setHeading(heading);
-    if (indentStart     !== null) inserted.setIndentStart(indentStart);
-    if (indentFirstLine !== null) inserted.setIndentFirstLine(indentFirstLine);
-    if (indentEnd       !== null) inserted.setIndentEnd(indentEnd);
-    if (lineSpacing     !== null) inserted.setLineSpacing(lineSpacing);
-    if (spacingBefore   !== null) inserted.setSpacingBefore(spacingBefore);
-    if (spacingAfter    !== null) inserted.setSpacingAfter(spacingAfter);
+    const inserted = body.insertParagraph(insertIndex, nonEmpty[i]);
+    if (heading !== null) inserted.setHeading(heading);
+    inserted.setAttributes(templateAttrs);
+    applyTextStyle(inserted);
   }
 }
 
@@ -499,9 +541,10 @@ function generateAbstractPDFs() {
       studentFirstName:      row[COL.STUDENT_FIRST],
       studentLastName:       row[COL.STUDENT_LAST],
       studentEmail:          row[COL.STUDENT_EMAIL],
-      studentship:           row[COL.STUDENTSHIP],
-      stipendOther:          row[COL.STIPEND_OTHER],
-      supervisorFirstName:   row[COL.SUP_FIRST],
+      studentship:            row[COL.STUDENTSHIP],
+      stipendOther:           row[COL.STIPEND_OTHER],
+      supervisorFundDetails:  row[COL.SUP_FUND_DETAILS],
+      supervisorFirstName:    row[COL.SUP_FIRST],
       supervisorLastName:    row[COL.SUP_LAST],
       supervisorEmail:       row[COL.SUP_EMAIL],
       supervisorDepartment:  row[COL.DEPARTMENT],
@@ -650,6 +693,7 @@ function sendBatchApprovalEmails() {
 
     MailApp.sendEmail({
       to:       row[COL.STUDENT_EMAIL],
+      cc:       row[COL.SUP_EMAIL] || '',
       subject:  applyEmailTemplate(templates.approvalSubject, values),
       htmlBody: applyEmailTemplate(templates.approvalBody,    values)
     });
@@ -683,6 +727,7 @@ function sendBatchRejectionEmails() {
 
     MailApp.sendEmail({
       to:       row[COL.STUDENT_EMAIL],
+      cc:       row[COL.SUP_EMAIL] || '',
       subject:  applyEmailTemplate(templates.rejectionSubject, values),
       htmlBody: applyEmailTemplate(templates.rejectionBody,    values)
     });
@@ -700,28 +745,29 @@ function setupSheet() {
   const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Form Responses');
 
   const headers = [
-    'Timestamp',             // A
-    'Student First Name',    // B
-    'Student Last Name',     // C
-    'Student Email',         // D
-    'Stipend Support',       // E
-    'Stipend (Other)',       // F
-    'Supervisor First Name', // G
-    'Supervisor Last Name',  // H
-    'Supervisor Email',      // I
-    'Department',            // J
-    'Institute Affiliation', // K
-    'Abstract Title',        // L
-    'First Author',          // M
-    'Additional Authors',    // N
-    'Abstract Body',         // O
-    'Approval Status',       // P ← admin dropdown
-    'Review Notes',          // Q ← admin fills
-    'PDF Status',            // R ← auto
-    'PDF Drive Link',        // S ← auto
-    'Email Status',          // T ← auto
-    'Poster Number',         // U ← auto
-    'Edit Token'             // V ← system
+    'Timestamp',                  // A
+    'Student First Name',         // B
+    'Student Last Name',          // C
+    'Student Email',              // D
+    'Stipend Support',            // E
+    'Stipend (Other)',            // F
+    'Supervisor Fund Details',    // G
+    'Supervisor First Name',      // H
+    'Supervisor Last Name',       // I
+    'Supervisor Email',           // J
+    'Department',                 // K
+    'Institute Affiliation',      // L
+    'Abstract Title',             // M
+    'First Author',               // N
+    'Additional Authors',         // O
+    'Abstract Body',              // P
+    'Approval Status',            // Q ← admin dropdown
+    'Review Notes',               // R ← admin fills
+    'PDF Status',                 // S ← auto
+    'PDF Drive Link',             // T ← auto
+    'Email Status',               // U ← auto
+    'Poster Number',              // V ← auto
+    'Edit Token'                  // W ← system
   ];
 
   // If row 1 already has submission data (not a header), insert a blank row first
@@ -736,9 +782,12 @@ function setupSheet() {
     .setBackground('#003C1E')
     .setFontColor('#ffffff');
 
+  // Clear any stray validation on column P (Abstract Body)
+  sheet.getRange(2, COL.ABSTRACT_BODY + 1, sheet.getMaxRows() - 1, 1).clearDataValidations();
+
   const approvalRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(['Approved', 'Not Approved'], true)
-    .setAllowInvalid(false)
+    .requireValueInList(['Requires Review', 'Approved', 'Not Approved'], true)
+    .setAllowInvalid(true)
     .build();
   sheet.getRange(2, COL.APPROVAL_STATUS + 1, sheet.getMaxRows() - 1, 1).setDataValidation(approvalRule);
 
@@ -767,7 +816,7 @@ function getAbstractsForReview() {
       firstAuthor:   row[COL.FIRST_AUTHOR]   || '',
       coAuthors:     row[COL.CO_AUTHORS]     || '',
       abstractBody:  row[COL.ABSTRACT_BODY]  || '',
-      approvalStatus: (row[COL.APPROVAL_STATUS] || '').toString().trim() || 'Unprocessed',
+      approvalStatus: (row[COL.APPROVAL_STATUS] || '').toString().trim() || 'Requires Review',
       reviewNotes:   row[COL.REVIEW_NOTES]   || '',
       posterNumber:  row[COL.POSTER_NUMBER]  || '',
       pdfLink:       row[COL.PDF_LINK]       || ''
@@ -781,11 +830,11 @@ function getAbstractsForReview() {
 // Returns { posterNumber } so the sidebar can display the auto-assigned number immediately.
 function saveAbstractDecision(rowIndex, status, notes) {
   const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Form Responses');
-  sheet.getRange(rowIndex, COL.APPROVAL_STATUS + 1).setValue(status || 'Unprocessed');
+  sheet.getRange(rowIndex, COL.APPROVAL_STATUS + 1).setValue(status || 'Requires Review');
   sheet.getRange(rowIndex, COL.REVIEW_NOTES    + 1).setValue(notes  || '');
 
   const statusLower = (status || '').toLowerCase();
-  const rowRange    = sheet.getRange(rowIndex, 1, 1, 22);
+  const rowRange    = sheet.getRange(rowIndex, 1, 1, 23);
   let posterNumber  = '';
 
   if (statusLower === 'approved') {
@@ -879,7 +928,7 @@ function generateAbstractListPDF() {
   const folder  = DriveApp.getFolderById(SUBMISSIONS_FOLDER_ID);
   const pdfFile = folder.createFile(pdfBlob);
 
-  Drive.Files.trash(doc.getId(), { supportsAllDrives: true });
+  DriveApp.getFileById(doc.getId()).setTrashed(true);
 
   return 'https://drive.google.com/file/d/' + pdfFile.getId() + '/view';
 }
@@ -931,6 +980,106 @@ function generateAbstractList() {
   });
 
   return list;
+}
+
+// ===== SIDEBAR: GET NAME BADGE DATA (STUDENTS + DEDUPLICATED SUPERVISORS) =====
+function getNameBadgeData() {
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Form Responses');
+  const data  = sheet.getDataRange().getValues();
+  const students    = [];
+  const supervisors = [];
+  const seenSups    = {};   // keyed by supervisor email (falls back to first|last)
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (!row[COL.TIMESTAMP]) continue;
+    if ((row[COL.APPROVAL_STATUS] || '').toString().trim().toLowerCase() !== 'approved') continue;
+
+    const studentFirst = (row[COL.STUDENT_FIRST] || '').toString().trim();
+    const studentLast  = (row[COL.STUDENT_LAST]  || '').toString().trim();
+    const supFirst     = (row[COL.SUP_FIRST]      || '').toString().trim();
+    const supLast      = (row[COL.SUP_LAST]       || '').toString().trim();
+    const supEmail     = (row[COL.SUP_EMAIL]      || '').toString().trim().toLowerCase();
+    const department   = (row[COL.DEPARTMENT]     || '').toString().trim();
+    const institute    = (row[COL.INSTITUTE]      || '').toString().trim();
+    const posterNumber = (row[COL.POSTER_NUMBER]  || '').toString().trim();
+
+    students.push({
+      name:         studentFirst + ' ' + studentLast,
+      labLine:      supLast + ' Lab',
+      posterNumber: posterNumber
+    });
+
+    const supKey = supEmail || (supFirst + '|' + supLast).toLowerCase();
+    if (!seenSups[supKey]) {
+      seenSups[supKey] = true;
+      supervisors.push({
+        name:       'Dr. ' + supFirst + ' ' + supLast,
+        department: department,
+        institute:  institute
+      });
+    }
+  }
+
+  students.sort(function(a, b) {
+    const nA = parseInt((a.posterNumber.match(/\d+/) || ['0'])[0], 10);
+    const nB = parseInt((b.posterNumber.match(/\d+/) || ['0'])[0], 10);
+    return nA - nB;
+  });
+  supervisors.sort(function(a, b) { return a.name.localeCompare(b.name); });
+
+  return { students: students, supervisors: supervisors };
+}
+
+// ===== SIDEBAR: OPEN NAME BADGE PRINT DIALOG =====
+function showNameBadgesDialog() {
+  const data    = getNameBadgeData();
+  const content = HtmlService.createHtmlOutputFromFile('NameBadges').getContent();
+  const inject  = '<script>var BADGE_DATA=' + JSON.stringify(data) + ';<\/script>';
+  const html    = HtmlService.createHtmlOutput(content.replace('</head>', inject + '\n</head>'))
+    .setWidth(900)
+    .setHeight(680);
+  SpreadsheetApp.getUi().showModelessDialog(html, 'Name Badges – Avery 5395');
+}
+
+// ===== SIDEBAR: GET APPROVED POSTERS FOR LABEL PRINTING =====
+function getApprovedPostersForLabels() {
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Form Responses');
+  const data  = sheet.getDataRange().getValues();
+  const labels = [];
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (!row[COL.TIMESTAMP]) continue;
+    if ((row[COL.APPROVAL_STATUS] || '').toString().trim().toLowerCase() !== 'approved') continue;
+    const posterNumber = (row[COL.POSTER_NUMBER] || '').toString().trim();
+    if (!posterNumber) continue;
+
+    labels.push({
+      posterNumber:   posterNumber,
+      studentLast:    (row[COL.STUDENT_LAST] || '').toString().trim(),
+      supervisorLast: (row[COL.SUP_LAST]     || '').toString().trim()
+    });
+  }
+
+  labels.sort(function(a, b) {
+    const nA = parseInt((a.posterNumber.match(/\d+/) || ['0'])[0], 10);
+    const nB = parseInt((b.posterNumber.match(/\d+/) || ['0'])[0], 10);
+    return nA - nB;
+  });
+
+  return labels;
+}
+
+// ===== SIDEBAR: OPEN POSTER LABEL PRINT DIALOG =====
+function showPosterLabelsDialog() {
+  const labels  = getApprovedPostersForLabels();
+  const content = HtmlService.createHtmlOutputFromFile('PosterLabels').getContent();
+  const inject  = '<script>var LABEL_DATA=' + JSON.stringify(labels) + ';<\/script>';
+  const html    = HtmlService.createHtmlOutput(content.replace('</head>', inject + '\n</head>'))
+    .setWidth(900)
+    .setHeight(680);
+  SpreadsheetApp.getUi().showModelessDialog(html, 'Poster Tags – Avery 5395');
 }
 
 // ===== UTILITIES =====

@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    /*
+      Avery 5395 — Adhesive Name Badges — 2-1/3" × 3-3/8", 8 per sheet
+      On the sheet the labels are landscape: 3.375" wide × 2.333" tall
+      Layout: 2 columns × 4 rows
+      Margins: 0.875" left/right, 0.833" top/bottom
+    */
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, 'Helvetica Neue', sans-serif;
+      background: #e0e0e0;
+    }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      background: #003C1E;
+      color: #fff;
+      padding: 9px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .toolbar-title { font-size: 0.95em; font-weight: 700; }
+    .toolbar-hint  { font-size: 0.78em; opacity: 0.8; margin-top: 2px; }
+    .btn-print {
+      background: #F4C430;
+      color: #003C1E;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 4px;
+      font-size: 0.92em;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .btn-print:hover { background: #dda820; }
+
+    /* ── Preview container ── */
+    .preview-area {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    /* ── Sheet preview at 70% scale ──────────────────────────────────────
+       Actual print (96 dpi):  8.5in=816px,   11in=1056px
+       At 70%:                             571px,              739px
+
+       Label actual:  3.375in × 2.333in = 324px × 224px
+       At 70%:                             227px × 157px
+
+       Margin actual: 0.875in × 0.833in  = 84px × 80px
+       At 70%:                             59px  × 56px
+    ──────────────────────────────────────────────────────────────────── */
+    .sheet {
+      background: #fff;
+      box-shadow: 0 3px 14px rgba(0,0,0,0.25);
+      width: 571px;
+      height: 739px;
+      padding: 56px 59px;
+      display: grid;
+      grid-template-columns: 227px 227px;
+      grid-template-rows: 157px 157px 157px 157px;
+      gap: 0;
+      flex-shrink: 0;
+    }
+
+    /* ── Label cell (screen) ── */
+    .label {
+      width: 227px;
+      height: 157px;
+      border: 1px dashed #bbb;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .label.empty { background: #fafafa; }
+
+    .lbl-header {
+      background: #003C1E;
+      color: #fff;
+      font-size: 6px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      padding: 3px 6px;
+      flex-shrink: 0;
+    }
+
+    .lbl-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 5px 8px;
+      gap: 1px;
+    }
+
+    .lbl-poster-word {
+      font-size: 6px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #666;
+    }
+
+    .lbl-number {
+      font-size: 44px;
+      font-weight: 900;
+      color: #003C1E;
+      line-height: 1;
+    }
+
+    .lbl-names {
+      font-size: 7.5px;
+      color: #333;
+      font-weight: 600;
+      margin-top: 4px;
+      text-align: center;
+    }
+
+    /* ── No-data message ── */
+    .no-data {
+      background: #fff;
+      border-radius: 6px;
+      padding: 32px;
+      color: #666;
+      text-align: center;
+      font-size: 0.9em;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    /* ════════════════════════════════════════════════════════
+       PRINT STYLES
+       Avery 5395: label 3.375in × 2.333in (landscape on sheet)
+       2 cols × 4 rows; margins 0.875in L/R, 0.833in T/B
+       Verify: 0.875+3.375+3.375+0.875 = 8.5in ✓
+               0.833+2.333×4+0.833    = 11in  ✓
+    ════════════════════════════════════════════════════════ */
+    @media print {
+      body { background: #fff; }
+
+      .toolbar      { display: none !important; }
+      .preview-area { padding: 0; gap: 0; align-items: flex-start; }
+
+      .sheet {
+        box-shadow: none;
+        width: 8.5in;
+        height: 11in;
+        padding: 0.833in 0.875in;
+        grid-template-columns: 3.375in 3.375in;
+        grid-template-rows: 2.333in 2.333in 2.333in 2.333in;
+        page-break-after: always;
+        break-after: page;
+      }
+
+      .label        { width: 3.375in; height: 2.333in; border: 1px dashed #ccc; }
+      .lbl-header   { font-size: 7pt; padding: 3pt 6pt; }
+      .lbl-body     { padding: 5pt 8pt; gap: 1pt; }
+      .lbl-poster-word { font-size: 8pt; }
+      .lbl-number   { font-size: 52pt; }
+      .lbl-names    { font-size: 10pt; margin-top: 4pt; }
+    }
+
+    @page { size: letter portrait; margin: 0; }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <div>
+      <div class="toolbar-title">Poster Tags &mdash; Avery 5395</div>
+      <div class="toolbar-hint">Set printer to &ldquo;Actual Size&rdquo; / 100% &mdash; no scaling</div>
+    </div>
+    <button class="btn-print" onclick="window.print()">&#128424; Print</button>
+  </div>
+
+  <div class="preview-area" id="previewArea"></div>
+
+  <script>
+    var LABEL_DATA = (typeof LABEL_DATA !== 'undefined') ? LABEL_DATA : [];
+    var PER_SHEET  = 8;
+    var area       = document.getElementById('previewArea');
+
+    if (!LABEL_DATA || LABEL_DATA.length === 0) {
+      area.innerHTML =
+        '<div class="no-data">' +
+          'No approved abstracts with assigned poster numbers found.<br>' +
+          'Approve submissions and assign poster numbers first.' +
+        '</div>';
+    } else {
+      var padded = LABEL_DATA.slice();
+      while (padded.length % PER_SHEET !== 0) padded.push(null);
+
+      for (var s = 0; s < padded.length / PER_SHEET; s++) {
+        var sheet = document.createElement('div');
+        sheet.className = 'sheet';
+
+        for (var i = 0; i < PER_SHEET; i++) {
+          var lbl  = padded[s * PER_SHEET + i];
+          var cell = document.createElement('div');
+          cell.className = 'label' + (lbl ? '' : ' empty');
+
+          if (lbl) {
+            cell.innerHTML =
+              '<div class="lbl-header">FoMD Summer Students’ Research Day 2026</div>' +
+              '<div class="lbl-body">' +
+                '<div class="lbl-poster-word">Poster</div>' +
+                '<div class="lbl-number">' + esc(lbl.posterNumber) + '</div>' +
+                '<div class="lbl-names">' +
+                  esc(lbl.studentLast) + ' / ' + esc(lbl.supervisorLast) +
+                '</div>' +
+              '</div>';
+          }
+
+          sheet.appendChild(cell);
+        }
+        area.appendChild(sheet);
+      }
+    }
+
+    function esc(s) {
+      return String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+  </script>
+</body>
+</html>
