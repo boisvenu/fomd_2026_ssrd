@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      * { box-sizing: border-box; }
+
+      body {
+        font-family: Roboto, Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #f4faf4;
+        color: #003C1E;
+        font-size: 13px;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      /* ── Top bar ── */
+      .top-bar {
+        background: #003C1E;
+        color: #fff;
+        padding: 8px 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+      }
+
+      .top-bar select {
+        padding: 4px 8px;
+        border-radius: 4px;
+        border: none;
+        font-size: 0.88em;
+        background: #fff;
+        color: #003C1E;
+      }
+
+      .top-bar button {
+        padding: 5px 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.88em;
+        font-weight: 600;
+        background: #F4C430;
+        color: #003C1E;
+      }
+      .top-bar button:hover { background: #e0b020; }
+
+      /* ── Stats pills ── */
+      .stats-bar {
+        display: flex;
+        gap: 8px;
+        margin-left: auto;
+      }
+      .stat-pill {
+        text-align: center;
+        padding: 3px 10px;
+        border-radius: 10px;
+        font-size: 0.78em;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      .pill-total    { background: #cce0ff; color: #003366; }
+      .pill-pending  { background: #fff3cd; color: #6b5800; }
+      .pill-approved { background: #d4edda; color: #155724; }
+      .pill-rejected { background: #f8d7da; color: #721c24; }
+
+      /* ── Navigation bar ── */
+      .nav-bar {
+        background: #e8f5e8;
+        border-bottom: 1px solid #c8e6c8;
+        padding: 6px 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+      }
+      .nav-bar button {
+        padding: 4px 14px;
+        border: 1px solid #aaa;
+        border-radius: 4px;
+        background: #fff;
+        cursor: pointer;
+        font-size: 0.88em;
+        font-weight: 600;
+        color: #003C1E;
+      }
+      .nav-bar button:hover { background: #d4edda; }
+      .nav-bar button:disabled { color: #bbb; cursor: default; }
+      .nav-counter { font-size: 0.88em; color: #444; }
+
+      /* ── Main content area ── */
+      .content {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+        gap: 0;
+      }
+
+      /* ── Left panel: metadata ── */
+      .meta-panel {
+        width: 270px;
+        flex-shrink: 0;
+        padding: 14px 16px;
+        overflow-y: auto;
+        border-right: 2px solid #c8e6c8;
+        background: #fff;
+      }
+
+      .field-label {
+        display: block;
+        font-size: 0.72em;
+        font-weight: 700;
+        color: #005C2E;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 12px;
+        margin-bottom: 2px;
+      }
+      .field-label:first-child { margin-top: 0; }
+
+      .field-value {
+        font-size: 0.9em;
+        color: #111;
+        line-height: 1.4;
+      }
+
+      .status-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 0.82em;
+        font-weight: 700;
+      }
+      .badge-approved    { background: #d4edda; color: #155724; }
+      .badge-rejected    { background: #f8d7da; color: #721c24; }
+      .badge-unprocessed { background: #fff3cd; color: #856404; }
+
+      .pdf-link {
+        font-size: 0.85em;
+        color: #005C2E;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      .pdf-link:hover { text-decoration: underline; }
+
+      /* ── Right panel: abstract + decision ── */
+      .review-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: #fafffe;
+      }
+
+      .abstract-section {
+        flex: 1;
+        padding: 14px 18px;
+        overflow-y: auto;
+      }
+
+      .abstract-title {
+        font-size: 1.05em;
+        font-weight: 700;
+        color: #003C1E;
+        margin-bottom: 10px;
+        line-height: 1.4;
+      }
+
+      .abstract-body {
+        font-size: 0.9em;
+        line-height: 1.6;
+        color: #222;
+        white-space: pre-wrap;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 12px 14px;
+      }
+
+      /* ── Decision bar (bottom of right panel) ── */
+      .decision-bar {
+        background: #fff;
+        border-top: 2px solid #c8e6c8;
+        padding: 10px 18px;
+        flex-shrink: 0;
+      }
+
+      .decision-bar label {
+        display: block;
+        font-size: 0.82em;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 4px;
+      }
+
+      textarea {
+        width: 100%;
+        border: 1px solid #bbb;
+        border-radius: 4px;
+        padding: 6px 8px;
+        font-size: 0.85em;
+        font-family: inherit;
+        resize: vertical;
+        line-height: 1.4;
+        min-height: 54px;
+      }
+
+      .btn-row {
+        display: flex;
+        gap: 10px;
+        margin-top: 8px;
+        align-items: center;
+      }
+
+      .btn-row button {
+        padding: 8px 20px;
+        border: none;
+        border-radius: 4px;
+        font-size: 0.9em;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .btn-approve { background: #1e7e34; color: #fff; }
+      .btn-approve:hover { background: #155d27; }
+      .btn-reject  { background: #b22222; color: #fff; }
+      .btn-reject:hover  { background: #8b0000; }
+      .btn-reset   { background: #6c757d; color: #fff; }
+      .btn-reset:hover   { background: #3d4449; }
+
+      /* ── Status message ── */
+      .status-msg {
+        display: none;
+        font-size: 0.83em;
+        padding: 5px 10px;
+        border-radius: 4px;
+        background: #f0faf0;
+        border: 1px solid #b2d8b2;
+        margin-left: auto;
+      }
+      .status-msg.show  { display: block; }
+      .status-msg.error { background: #fdf0f0; border-color: #f5b8b8; color: #7a1a1a; }
+
+      /* ── Empty / loading states ── */
+      .empty-state {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #666;
+        font-size: 0.95em;
+        flex-direction: column;
+        gap: 8px;
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- Top bar: filter + load + stats -->
+    <div class="top-bar">
+      <select id="reviewFilter" onchange="if (allAbstracts.length) applyFilter()">
+        <option value="unprocessed">Unprocessed only</option>
+        <option value="all">All submissions</option>
+        <option value="approved">Approved only</option>
+        <option value="rejected">Not Approved only</option>
+      </select>
+      <button onclick="loadAbstracts()">Load</button>
+      <div class="stats-bar" id="statsBar" style="display:none;">
+        <span class="stat-pill pill-total"><span id="statTotal">0</span> Total</span>
+        <span class="stat-pill pill-pending"><span id="statPending">0</span> Pending</span>
+        <span class="stat-pill pill-approved"><span id="statApproved">0</span> Approved</span>
+        <span class="stat-pill pill-rejected"><span id="statRejected">0</span> Rejected</span>
+      </div>
+    </div>
+
+    <!-- Navigation bar -->
+    <div class="nav-bar" id="navBar" style="display:none;">
+      <button id="btnPrev" onclick="navigate(-1)">◀ Prev</button>
+      <button id="btnNext" onclick="navigate(1)">Next ▶</button>
+      <span class="nav-counter" id="navCounter"></span>
+      <div class="status-msg" id="saveStatus"></div>
+    </div>
+
+    <!-- Main content -->
+    <div class="content" id="mainContent">
+      <div class="empty-state" id="emptyState">
+        <div>Select a filter and click <strong>Load</strong> to begin reviewing.</div>
+      </div>
+    </div>
+
+    <script>
+      var allAbstracts      = [];
+      var filteredAbstracts = [];
+      var currentIndex      = 0;
+
+      // ── Load ──────────────────────────────────
+      function loadAbstracts() {
+        setEmptyState('Loading submissions…');
+        google.script.run
+          .withSuccessHandler(function(data) {
+            allAbstracts = data || [];
+            updateStats(allAbstracts);
+            document.getElementById('statsBar').style.display = 'flex';
+            applyFilter();
+          })
+          .withFailureHandler(function(err) {
+            setEmptyState('Error loading: ' + err.message);
+          })
+          .getAbstractsForReview();
+      }
+
+      function applyFilter() {
+        var f = document.getElementById('reviewFilter').value;
+        if (f === 'unprocessed') {
+          filteredAbstracts = allAbstracts.filter(function(a) {
+            return a.approvalStatus !== 'Approved' && a.approvalStatus !== 'Not Approved';
+          });
+        } else if (f === 'approved') {
+          filteredAbstracts = allAbstracts.filter(function(a) { return a.approvalStatus === 'Approved'; });
+        } else if (f === 'rejected') {
+          filteredAbstracts = allAbstracts.filter(function(a) { return a.approvalStatus === 'Not Approved'; });
+        } else {
+          filteredAbstracts = allAbstracts.slice();
+        }
+
+        if (filteredAbstracts.length === 0) {
+          document.getElementById('navBar').style.display = 'none';
+          setEmptyState('No abstracts match this filter.');
+        } else {
+          document.getElementById('navBar').style.display = 'flex';
+          currentIndex = 0;
+          renderAbstract();
+        }
+      }
+
+      // ── Render ────────────────────────────────
+      function renderAbstract() {
+        var a = filteredAbstracts[currentIndex];
+        if (!a) return;
+
+        hideStatus();
+        document.getElementById('navCounter').textContent =
+          (currentIndex + 1) + ' of ' + filteredAbstracts.length;
+        document.getElementById('btnPrev').disabled = currentIndex === 0;
+        document.getElementById('btnNext').disabled = currentIndex === filteredAbstracts.length - 1;
+
+        var badgeClass = a.approvalStatus === 'Approved'     ? 'badge-approved'
+                       : a.approvalStatus === 'Not Approved' ? 'badge-rejected'
+                       : 'badge-unprocessed';
+        var statusLabel = a.approvalStatus || 'Unprocessed';
+
+        var pdfHtml = a.pdfLink
+          ? '<a class="pdf-link" href="' + esc(a.pdfLink) + '" target="_blank">View PDF ↗</a>'
+          : '<span style="color:#888;font-size:0.85em;">No PDF</span>';
+
+        var posterHtml = a.posterNumber
+          ? '<span class="field-value" style="font-weight:700;color:#005C2E;">' + esc(a.posterNumber) + '</span>'
+          : '<span style="color:#888;font-size:0.85em;">Not yet assigned</span>';
+
+        var coAuthorHtml = a.coAuthors
+          ? '<span class="field-label">Co-Authors</span><div class="field-value">' + esc(a.coAuthors) + '</div>'
+          : '';
+
+        var metaHtml =
+          '<span class="field-label">Status</span>' +
+          '<span class="status-badge ' + badgeClass + '">' + esc(statusLabel) + '</span>' +
+
+          '<span class="field-label">Poster #</span>' + posterHtml +
+
+          '<span class="field-label">Student</span>' +
+          '<div class="field-value">' + esc(a.studentFirst) + ' ' + esc(a.studentLast) + '</div>' +
+          '<div class="field-value" style="color:#555;font-size:0.85em;">' + esc(a.studentEmail) + '</div>' +
+
+          '<span class="field-label">First Author</span>' +
+          '<div class="field-value">' + esc(a.firstAuthor || '—') + '</div>' +
+
+          coAuthorHtml +
+
+          '<span class="field-label">Department</span>' +
+          '<div class="field-value">' + esc(a.department || '—') + '</div>' +
+
+          '<span class="field-label">Supervisor</span>' +
+          '<div class="field-value">' + esc(a.supervisorFirst) + ' ' + esc(a.supervisorLast) + '</div>' +
+
+          '<span class="field-label">PDF</span>' + pdfHtml;
+
+        var mainHtml =
+          '<div class="meta-panel">' + metaHtml + '</div>' +
+          '<div class="review-panel">' +
+            '<div class="abstract-section">' +
+              '<div class="abstract-title">' + esc(a.title) + '</div>' +
+              '<div class="abstract-body">' + esc(a.abstractBody) + '</div>' +
+            '</div>' +
+            '<div class="decision-bar">' +
+              '<label for="reviewNotes">Reviewer Notes <span style="font-weight:400;">(optional — included in rejection emails)</span></label>' +
+              '<textarea id="reviewNotes" rows="2" placeholder="Add comments…">' + esc(a.reviewNotes || '') + '</textarea>' +
+              '<div class="btn-row">' +
+                '<button class="btn-approve" onclick="saveDecision(\'Approved\')">✓ Approve</button>' +
+                '<button class="btn-reject"  onclick="saveDecision(\'Not Approved\')">✗ Reject</button>' +
+                '<button class="btn-reset"   onclick="saveDecision(\'Unprocessed\')">↺ Reset</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+
+        document.getElementById('mainContent').innerHTML = mainHtml;
+        document.getElementById('emptyState') && (void 0); // cleared by innerHTML above
+      }
+
+      // ── Navigate ──────────────────────────────
+      function navigate(dir) {
+        currentIndex = Math.max(0, Math.min(filteredAbstracts.length - 1, currentIndex + dir));
+        renderAbstract();
+      }
+
+      // ── Save decision ─────────────────────────
+      function saveDecision(status) {
+        var a     = filteredAbstracts[currentIndex];
+        if (!a) return;
+        var notesEl = document.getElementById('reviewNotes');
+        var notes   = notesEl ? notesEl.value : '';
+
+        showStatus('Saving…');
+        google.script.run
+          .withSuccessHandler(function(result) {
+            a.approvalStatus = status;
+            a.reviewNotes    = notes;
+            a.posterNumber   = (result && result.posterNumber) ? result.posterNumber : '';
+
+            for (var i = 0; i < allAbstracts.length; i++) {
+              if (allAbstracts[i].rowIndex === a.rowIndex) {
+                allAbstracts[i].approvalStatus = status;
+                allAbstracts[i].reviewNotes    = notes;
+                allAbstracts[i].posterNumber   = a.posterNumber;
+                break;
+              }
+            }
+
+            updateStats(allAbstracts);
+            renderAbstract();
+
+            var msg = '✓ ' + (status || 'Unprocessed');
+            if (result && result.posterNumber) msg += ' — ' + result.posterNumber + ' assigned';
+            showStatus(msg);
+          })
+          .withFailureHandler(function(err) {
+            showStatus('Error: ' + err.message, true);
+          })
+          .saveAbstractDecision(a.rowIndex, status, notes);
+      }
+
+      // ── Stats ─────────────────────────────────
+      function updateStats(data) {
+        document.getElementById('statTotal').textContent =
+          data.length;
+        document.getElementById('statPending').textContent =
+          data.filter(function(a) { return a.approvalStatus !== 'Approved' && a.approvalStatus !== 'Not Approved'; }).length;
+        document.getElementById('statApproved').textContent =
+          data.filter(function(a) { return a.approvalStatus === 'Approved'; }).length;
+        document.getElementById('statRejected').textContent =
+          data.filter(function(a) { return a.approvalStatus === 'Not Approved'; }).length;
+      }
+
+      // ── Helpers ───────────────────────────────
+      function setEmptyState(msg) {
+        document.getElementById('navBar').style.display = 'none';
+        document.getElementById('mainContent').innerHTML =
+          '<div class="empty-state"><div>' + esc(msg) + '</div></div>';
+      }
+
+      function showStatus(text, isError) {
+        var el = document.getElementById('saveStatus');
+        if (!el) return;
+        el.textContent = text;
+        el.className = 'status-msg show' + (isError ? ' error' : '');
+      }
+
+      function hideStatus() {
+        var el = document.getElementById('saveStatus');
+        if (el) el.className = 'status-msg';
+      }
+
+      function esc(str) {
+        return String(str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+    </script>
+  </body>
+</html>

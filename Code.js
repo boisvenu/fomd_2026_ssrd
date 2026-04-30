@@ -10,32 +10,31 @@ const SUBMISSIONS_FOLDER_ID = PROPS.getProperty('SUBMISSIONS_FOLDER_ID');
 const TEMPLATE_DOC_ID       = PROPS.getProperty('TEMPLATE_DOC_ID');
 
 // Single source of truth for all column positions (0-based)
-// A   B   C   D   E   F   G   H   I   J   K   L   M   N   O   P   Q   R   S   T   U   V   W
-// 0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22
+// A   B   C   D   E   F   G   H   I   J   K   L   M   N   O   P   Q   R   S   T   U   V
+// 0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21
 const COL = {
-  TIMESTAMP:        0,   // A — auto
-  STUDENT_FIRST:    1,   // B — form
-  STUDENT_LAST:     2,   // C — form
-  STUDENT_EMAIL:    3,   // D — form
-  STUDENTSHIP:      4,   // E — form
-  STIPEND_OTHER:    5,   // F — form (populated when Stipend = "Other")
-  SUP_FIRST:        6,   // G — form
-  SUP_LAST:         7,   // H — form
-  SUP_EMAIL:        8,   // I — form
-  DEPARTMENT:       9,   // J — form
-  INSTITUTE:        10,  // K — form (optional institute affiliation)
-  TITLE:            11,  // L — form
-  FIRST_AUTHOR:     12,  // M — form
-  FIRST_AUTHOR_AFF: 13,  // N — form
-  CO_AUTHORS:       14,  // O — form
-  ABSTRACT_BODY:    15,  // P — form
-  APPROVAL_STATUS:  16,  // Q — admin dropdown: Approved / Not Approved
-  REVIEW_NOTES:     17,  // R — admin fills (included in rejection email)
-  PDF_STATUS:       18,  // S — auto
-  PDF_LINK:         19,  // T — auto (Drive URL)
-  EMAIL_STATUS:     20,  // U — auto
-  POSTER_NUMBER:    21,  // V — auto (assigned via assignPosterNumbers)
-  EDIT_TOKEN:       22   // W — system (powers edit links)
+  TIMESTAMP:       0,   // A — auto
+  STUDENT_FIRST:   1,   // B — form
+  STUDENT_LAST:    2,   // C — form
+  STUDENT_EMAIL:   3,   // D — form
+  STUDENTSHIP:     4,   // E — form
+  STIPEND_OTHER:   5,   // F — form (populated when Stipend = "Other")
+  SUP_FIRST:       6,   // G — form
+  SUP_LAST:        7,   // H — form
+  SUP_EMAIL:       8,   // I — form
+  DEPARTMENT:      9,   // J — form
+  INSTITUTE:       10,  // K — form (optional institute affiliation)
+  TITLE:           11,  // L — form
+  FIRST_AUTHOR:    12,  // M — form
+  CO_AUTHORS:      13,  // N — form
+  ABSTRACT_BODY:   14,  // O — form
+  APPROVAL_STATUS: 15,  // P — admin dropdown: Approved / Not Approved
+  REVIEW_NOTES:    16,  // Q — admin fills (included in rejection email)
+  PDF_STATUS:      17,  // R — auto
+  PDF_LINK:        18,  // S — auto (Drive URL)
+  EMAIL_STATUS:    19,  // T — auto
+  POSTER_NUMBER:   20,  // U — auto (assigned via assignPosterNumbers)
+  EDIT_TOKEN:      21   // V — system (powers edit links)
 };
 
 // ===== SERVE FORM =====
@@ -86,7 +85,12 @@ function errorPage(title, body) {
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Abstract Admin')
-    .addItem('Open Admin Panel',                 'showSidebar')
+    .addItem('Open Admin Sidebar',               'showSidebar')
+    .addItem('Open Abstract Review (expanded)',  'showReviewDialog')
+    .addItem('Customize Email Templates',        'showEmailTemplateDialog')
+    .addSeparator()
+    .addItem('Send Approval Emails',             'sendBatchApprovalEmails')
+    .addItem('Send Rejection Emails',            'sendBatchRejectionEmails')
     .addSeparator()
     .addItem('Assign Poster Numbers',            'assignPosterNumbers')
     .addSeparator()
@@ -97,6 +101,80 @@ function onOpen() {
 function showSidebar() {
   const html = HtmlService.createHtmlOutputFromFile('Sidebar').setTitle('Abstract Admin Tools');
   SpreadsheetApp.getUi().showSidebar(html);
+}
+
+function showReviewDialog() {
+  const html = HtmlService.createHtmlOutputFromFile('ReviewDialog')
+    .setWidth(800)
+    .setHeight(620);
+  SpreadsheetApp.getUi().showModelessDialog(html, 'Abstract Review');
+}
+
+function showEmailTemplateDialog() {
+  const html = HtmlService.createHtmlOutputFromFile('EmailTemplateDialog')
+    .setWidth(820)
+    .setHeight(640);
+  SpreadsheetApp.getUi().showModelessDialog(html, 'Email Template Editor');
+}
+
+// Install trigger to ensure menu appears on sheet open
+function installTrigger() {
+  // Menu trigger
+  ScriptApp.newTrigger('onOpen')
+    .forSpreadsheet(SHEET_ID)
+    .onOpen()
+    .create();
+  
+  // Color coding trigger
+  ScriptApp.newTrigger('onEdit')
+    .forSpreadsheet(SHEET_ID)
+    .onEdit()
+    .create();
+  
+  return 'Triggers installed. Refresh the sheet.';
+}
+
+// ===== ON EDIT TRIGGER FOR ROW COLOR CODING + AUTO POSTER ASSIGNMENT =====
+function onEdit(e) {
+  if (!e || !e.range) return;
+
+  const sheet = e.range.getSheet();
+  if (sheet.getName() !== 'Form Responses') return;
+
+  const col = e.range.getColumn();
+  const row = e.range.getRow();
+
+  if (col === COL.APPROVAL_STATUS + 1 && row > 1) {
+    const status = (e.value || '').toString().trim().toLowerCase();
+    const rowRange = sheet.getRange(row, 1, 1, 22);
+
+    if (status === 'approved') {
+      rowRange.setBackgroundColor('#D9F2D9');
+      const existingPoster = sheet.getRange(row, COL.POSTER_NUMBER + 1).getValue();
+      if (!existingPoster || existingPoster.toString().trim() === '') {
+        const next = getNextPosterNumber(sheet);
+        sheet.getRange(row, COL.POSTER_NUMBER + 1)
+          .setValue(next.toString().padStart(3, '0'));
+      }
+    } else if (status === 'not approved') {
+      rowRange.setBackgroundColor('#F2D9D9');
+      sheet.getRange(row, COL.POSTER_NUMBER + 1).setValue('');
+    } else {
+      rowRange.setBackgroundColor('#FFFACD');
+      sheet.getRange(row, COL.POSTER_NUMBER + 1).setValue('');
+    }
+  }
+}
+
+// Returns the next sequential poster number (integer) across all existing assignments.
+function getNextPosterNumber(sheet) {
+  const data = sheet.getDataRange().getValues();
+  let max = 0;
+  for (let i = 1; i < data.length; i++) {
+    const match = (data[i][COL.POSTER_NUMBER] || '').toString().match(/(\d+)/);
+    if (match) max = Math.max(max, parseInt(match[1], 10));
+  }
+  return max + 1;
 }
 
 // ===== HANDLE FORM SUBMISSION (dispatcher) =====
@@ -129,19 +207,21 @@ function handleNewSubmission(formObj) {
     formObj.supervisorInstitute  || '',               // K: Institute Affiliation
     formObj.title,                                    // L: Abstract Title
     formObj.firstAuthor,                              // M: First Author
-    formObj.firstAuthorAffiliation,                   // N: First Author Affiliation
-    coAuthorsFormatted,                               // O: Additional Authors
-    formObj.abstractBody,                             // P: Abstract Body
-    '',                                               // Q: Approval Status   ← admin
-    '',                                               // R: Review Notes      ← admin
-    '',                                               // S: PDF Status        ← auto
-    '',                                               // T: PDF Drive Link    ← auto
-    '',                                               // U: Email Status      ← auto
-    '',                                               // V: Poster Number     ← auto
-    token                                             // W: Edit Token        ← system
+    coAuthorsFormatted,                               // N: Additional Authors
+    formObj.abstractBody,                             // O: Abstract Body
+    'Unprocessed',                                    // P: Approval Status   ← admin
+    '',                                               // Q: Review Notes      ← admin
+    '',                                               // R: PDF Status        ← auto
+    '',                                               // S: PDF Drive Link    ← auto
+    '',                                               // T: Email Status      ← auto
+    '',                                               // U: Poster Number     ← auto
+    token                                             // V: Edit Token        ← system
   ]);
 
   const lastRow = sheet.getLastRow();
+  
+  // Apply yellow background for Unprocessed status
+  sheet.getRange(lastRow, 1, 1, 22).setBackgroundColor('#FFFACD'); // Soft yellow (lemon chiffon)
   try {
     const pdf = generateAndSavePDF(formObj, additionalAuthors);
     const ts  = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
@@ -209,7 +289,6 @@ function handleEdit(formObj) {
   sheet.getRange(rowIndex, COL.INSTITUTE        + 1).setValue(formObj.supervisorInstitute || '');
   sheet.getRange(rowIndex, COL.TITLE            + 1).setValue(formObj.title);
   sheet.getRange(rowIndex, COL.FIRST_AUTHOR     + 1).setValue(formObj.firstAuthor);
-  sheet.getRange(rowIndex, COL.FIRST_AUTHOR_AFF + 1).setValue(formObj.firstAuthorAffiliation);
   sheet.getRange(rowIndex, COL.CO_AUTHORS       + 1).setValue(coAuthorsFormatted);
   sheet.getRange(rowIndex, COL.ABSTRACT_BODY    + 1).setValue(formObj.abstractBody);
   // Q (Approval Status), R (Review Notes), V (Poster Number), W (Edit Token) preserved
@@ -255,10 +334,7 @@ function getSubmissionByToken(token) {
     const coAuthorsStr      = (row[COL.CO_AUTHORS] || '').toString();
     const additionalAuthors = coAuthorsStr
       .split(';')
-      .map(s => {
-        const m = s.trim().match(/^(.+?)\s*\((.+?)\)$/);
-        return m ? { name: m[1].trim(), affiliation: m[2].trim() } : { name: s.trim(), affiliation: '' };
-      })
+      .map(s => ({ name: s.trim() }))
       .filter(a => a.name !== '');
 
     return {
@@ -274,7 +350,6 @@ function getSubmissionByToken(token) {
       supervisorInstitute:  row[COL.INSTITUTE],
       title:                row[COL.TITLE],
       firstAuthor:          row[COL.FIRST_AUTHOR],
-      firstAuthorAffiliation: row[COL.FIRST_AUTHOR_AFF],
       additionalAuthors:    additionalAuthors,
       abstractBody:         row[COL.ABSTRACT_BODY]
     };
@@ -284,18 +359,15 @@ function getSubmissionByToken(token) {
 
 // ===== HELPER: format co-authors for the sheet =====
 function formatCoAuthors(authors) {
-  return authors
-    .map(a => a.affiliation ? `${a.name} (${a.affiliation})` : a.name)
-    .join('; ');
+  return authors.map(a => a.name).join('; ');
 }
 
 // ===== PDF GENERATION FROM GOOGLE DOC TEMPLATE =====
 // Template Google Doc should contain these placeholder strings (each on its own line/paragraph):
-//   {{TITLE}}                    {{STUDENT_NAME}}           {{STUDENT_EMAIL}}
-//   {{STUDENTSHIP}}              {{SUPERVISOR_NAME}}        {{SUPERVISOR_EMAIL}}
-//   {{DEPARTMENT}}               {{INSTITUTE}}              {{FIRST_AUTHOR}}
-//   {{FIRST_AUTHOR_AFFILIATION}} {{CO_AUTHORS}}             {{ABSTRACT_BODY}}
-//   {{SUBMISSION_DATE}}
+//   {{TITLE}}           {{STUDENT_NAME}}    {{STUDENT_EMAIL}}
+//   {{STUDENTSHIP}}     {{SUPERVISOR_NAME}} {{SUPERVISOR_EMAIL}}
+//   {{DEPARTMENT}}      {{INSTITUTE}}       {{FIRST_AUTHOR}}
+//   {{CO_AUTHORS}}      {{ABSTRACT_BODY}}   {{SUBMISSION_DATE}}
 //
 // Design rules:
 //   - Apply all desired formatting TO the placeholder text itself — it is inherited by content.
@@ -305,20 +377,18 @@ function generateAndSavePDF(formObj, additionalAuthors) {
   if (!SUBMISSIONS_FOLDER_ID) throw new Error('SUBMISSIONS_FOLDER_ID not set in Script Properties');
   if (!TEMPLATE_DOC_ID)       throw new Error('TEMPLATE_DOC_ID not set in Script Properties');
 
-  const folder   = DriveApp.getFolderById(SUBMISSIONS_FOLDER_ID);
-  const template = DriveApp.getFileById(TEMPLATE_DOC_ID);
+  const submissionDate = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const safeName = formObj.studentLastName + '_' + submissionDate;
 
-  const safeName = 'Abstract_' + formObj.studentLastName + '_' +
-    formObj.title.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 40).trim();
+  const copyMeta = Drive.Files.copy({ title: safeName }, TEMPLATE_DOC_ID, { supportsAllDrives: true });
+  const copyId   = copyMeta.id;
 
-  const docCopy = template.makeCopy(safeName, folder);
-  const doc     = DocumentApp.openById(docCopy.getId());
-  const body    = doc.getBody();
+  const doc  = DocumentApp.openById(copyId);
+  const body = doc.getBody();
 
-  const coAuthorsLines = additionalAuthors.length > 0
-    ? additionalAuthors.map(a => a.affiliation ? a.name + ', ' + a.affiliation : a.name)
-    : ['None'];
-  replaceWithParagraphs(body, '{{CO_AUTHORS}}',    coAuthorsLines);
+  const coAuthorNames = additionalAuthors.map(a => a.name).filter(Boolean);
+  const coAuthorsLine = coAuthorNames.length > 0 ? ', ' + coAuthorNames.join(', ') : '';
+  body.replaceText('\\{\\{CO_AUTHORS\\}\\}', escapeDollarSigns(coAuthorsLine));
   replaceWithParagraphs(body, '{{ABSTRACT_BODY}}', (formObj.abstractBody || '').split('\n'));
 
   const stipendDisplay = formObj.studentship === 'Other' && formObj.stipendOther
@@ -334,9 +404,8 @@ function generateAndSavePDF(formObj, additionalAuthors) {
     '{{SUPERVISOR_EMAIL}}':         formObj.supervisorEmail      || '',
     '{{DEPARTMENT}}':               formObj.supervisorDepartment || '',
     '{{INSTITUTE}}':                formObj.supervisorInstitute  || '',
-    '{{FIRST_AUTHOR}}':             formObj.firstAuthor          || '',
-    '{{FIRST_AUTHOR_AFFILIATION}}': formObj.firstAuthorAffiliation || '',
-    '{{SUBMISSION_DATE}}':          Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'MMMM d, yyyy')
+    '{{FIRST_AUTHOR}}':    formObj.firstAuthor || '',
+    '{{SUBMISSION_DATE}}': Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'MMMM d, yyyy')
   };
 
   for (const [placeholder, value] of Object.entries(singleLine)) {
@@ -345,34 +414,65 @@ function generateAndSavePDF(formObj, additionalAuthors) {
 
   doc.saveAndClose();
 
-  const pdfBlob = docCopy.getAs('application/pdf').setName(safeName + '.pdf');
-  const pdfFile = folder.createFile(pdfBlob);
-  docCopy.setTrashed(true);
+  // Export as PDF using the Document service's built-in method (more reliable than URL fetch)
+  const pdfBlob = doc.getAs('application/pdf').setName(safeName + '.pdf');
 
-  return { blob: pdfBlob, url: pdfFile.getUrl() };
+  // Create the PDF in the submissions folder using Drive Advanced Service
+  // Use DriveApp for better compatibility with Shared Drives
+  const folder = DriveApp.getFolderById(SUBMISSIONS_FOLDER_ID);
+  const pdfFile = folder.createFile(pdfBlob);
+  pdfFile.setName(safeName + '.pdf');
+
+  // Trash the temporary doc copy
+  Drive.Files.trash(copyId, { supportsAllDrives: true });
+
+  return { blob: pdfBlob, url: 'https://drive.google.com/file/d/' + pdfFile.getId() + '/view' };
 }
 
 // Replaces a placeholder paragraph with one paragraph per line, inheriting the placeholder's style.
+// The first line replaces the placeholder text in-place so the original paragraph (with all
+// of its formatting) is preserved exactly. Additional lines are inserted as copies.
+// insertParagraph() can strip paragraph-level indent attributes from the inserted clone, so
+// we re-apply them explicitly using direct setter methods rather than setAttributes().
 function replaceWithParagraphs(body, placeholder, lines) {
   const result = body.findText(placeholder);
   if (!result) return;
 
   const element   = result.getElement();
   const para      = element.getType() === DocumentApp.ElementType.TEXT ? element.getParent() : element;
-  const paraIndex = body.getChildIndex(para);
-  const paraAttrs = para.getAttributes();
-  const textAttrs = element.getType() === DocumentApp.ElementType.TEXT ? element.getAttributes() : {};
 
   const nonEmpty = lines.filter(l => l.trim() !== '');
   if (nonEmpty.length === 0) nonEmpty.push('');
 
-  nonEmpty.slice().reverse().forEach(line => {
-    const newPara = body.insertParagraph(paraIndex, line);
-    newPara.setAttributes(paraAttrs);
-    if (newPara.editAsText) newPara.editAsText().setAttributes(textAttrs);
-  });
+  // Replace text in the first paragraph (preserves original paragraph object and its attributes)
+  para.editAsText().setText(nonEmpty[0]);
 
-  body.removeChild(para);
+  // Read paragraph-level style from the template paragraph once, before the loop
+  const alignment       = para.getAlignment();
+  const heading         = para.getHeading();
+  const indentStart     = para.getIndentStart();
+  const indentFirstLine = para.getIndentFirstLine();
+  const indentEnd       = para.getIndentEnd();
+  const lineSpacing     = para.getLineSpacing();
+  const spacingBefore   = para.getSpacingBefore();
+  const spacingAfter    = para.getSpacingAfter();
+
+  // Insert additional lines as new paragraphs, re-applying paragraph formatting explicitly
+  for (let i = 1; i < nonEmpty.length; i++) {
+    const insertIndex = body.getChildIndex(para) + i;
+    const newPara = para.copy();
+    newPara.editAsText().setText(nonEmpty[i]);
+    const inserted = body.insertParagraph(insertIndex, newPara);
+    // Re-apply paragraph-level formatting via direct setters (more reliable than setAttributes)
+    if (alignment       !== null) inserted.setAlignment(alignment);
+    if (heading         !== null) inserted.setHeading(heading);
+    if (indentStart     !== null) inserted.setIndentStart(indentStart);
+    if (indentFirstLine !== null) inserted.setIndentFirstLine(indentFirstLine);
+    if (indentEnd       !== null) inserted.setIndentEnd(indentEnd);
+    if (lineSpacing     !== null) inserted.setLineSpacing(lineSpacing);
+    if (spacingBefore   !== null) inserted.setSpacingBefore(spacingBefore);
+    if (spacingAfter    !== null) inserted.setSpacingAfter(spacingAfter);
+  }
 }
 
 function escapeDollarSigns(str) {
@@ -392,10 +492,7 @@ function generateAbstractPDFs() {
     const coAuthorsStr = (row[COL.CO_AUTHORS] || '').toString();
     const additionalAuthors = coAuthorsStr
       .split(';')
-      .map(s => {
-        const m = s.trim().match(/^(.+?)\s*\((.+?)\)$/);
-        return m ? { name: m[1].trim(), affiliation: m[2].trim() } : { name: s.trim(), affiliation: '' };
-      })
+      .map(s => ({ name: s.trim() }))
       .filter(a => a.name !== '');
 
     const formObj = {
@@ -410,9 +507,8 @@ function generateAbstractPDFs() {
       supervisorDepartment:  row[COL.DEPARTMENT],
       supervisorInstitute:   row[COL.INSTITUTE],
       title:                 row[COL.TITLE],
-      firstAuthor:           row[COL.FIRST_AUTHOR],
-      firstAuthorAffiliation:row[COL.FIRST_AUTHOR_AFF],
-      abstractBody:          row[COL.ABSTRACT_BODY]
+      firstAuthor:  row[COL.FIRST_AUTHOR],
+      abstractBody: row[COL.ABSTRACT_BODY]
     };
 
     try {
@@ -449,48 +545,113 @@ function assignPosterNumbers() {
     const hasPoster = row[COL.POSTER_NUMBER] && row[COL.POSTER_NUMBER].toString().trim() !== '';
     if (approval === 'approved' && !hasPoster) {
       maxNum++;
-      sheet.getRange(i + 1, COL.POSTER_NUMBER + 1).setValue('P-' + maxNum.toString().padStart(3, '0'));
+      sheet.getRange(i + 1, COL.POSTER_NUMBER + 1).setValue(maxNum.toString().padStart(3, '0'));
       assigned++;
     }
   }
 
-  const msg = 'Assigned ' + assigned + ' poster number(s). Next available: P-' + (maxNum + 1).toString().padStart(3, '0') + '.';
+  const msg = 'Assigned ' + assigned + ' poster number(s). Next available: ' + (maxNum + 1).toString().padStart(3, '0') + '.';
   Logger.log(msg);
   try { SpreadsheetApp.getUi().alert(msg); } catch (e) {}
   return msg;
 }
 
+// ===== EMAIL TEMPLATE MANAGEMENT =====
+function getDefaultEmailTemplates() {
+  return {
+    approvalSubject:  "2026 FoMD Summer Students' Research Day – Abstract Approved",
+    approvalBody:
+      '<p>Dear {{STUDENT_FIRST}},</p>\n' +
+      '<p>We are pleased to inform you that your abstract submission has been <strong>approved</strong> for the <strong>2026 FoMD Summer Students’ Research Day</strong>.</p>\n' +
+      '<p><strong>Abstract Title:</strong> {{TITLE}}</p>\n' +
+      '{{POSTER_BLOCK}}\n' +
+      '<p>Further details regarding the event will be sent to you in due course.</p>\n' +
+      '<p>Congratulations, and we look forward to seeing your presentation!</p>\n' +
+      '<br>\n' +
+      '<p>Kind regards,<br>FoMD Undergraduate Research Program</p>',
+
+    rejectionSubject: "2026 FoMD Summer Students' Research Day – Abstract Submission Update",
+    rejectionBody:
+      '<p>Dear {{STUDENT_FIRST}},</p>\n' +
+      '<p>Thank you for submitting your abstract to the <strong>2026 FoMD Summer Students’ Research Day</strong>.</p>\n' +
+      '<p><strong>Abstract Title:</strong> {{TITLE}}</p>\n' +
+      '<p>After careful review, we regret to inform you that your abstract was not selected for presentation at this year’s event.</p>\n' +
+      '{{REVIEWER_NOTES_BLOCK}}\n' +
+      '<p>We encourage you to continue your research and hope to see you at future events.</p>\n' +
+      '<p>If you have any questions, please contact <a href="mailto:fmdugrad@ualberta.ca">fmdugrad@ualberta.ca</a>.</p>\n' +
+      '<br>\n' +
+      '<p>Kind regards,<br>FoMD Undergraduate Research Program</p>'
+  };
+}
+
+function getEmailTemplates() {
+  const defaults = getDefaultEmailTemplates();
+  return {
+    approvalSubject:  PROPS.getProperty('APPROVAL_EMAIL_SUBJECT')  || defaults.approvalSubject,
+    approvalBody:     PROPS.getProperty('APPROVAL_EMAIL_BODY')     || defaults.approvalBody,
+    rejectionSubject: PROPS.getProperty('REJECTION_EMAIL_SUBJECT') || defaults.rejectionSubject,
+    rejectionBody:    PROPS.getProperty('REJECTION_EMAIL_BODY')    || defaults.rejectionBody
+  };
+}
+
+function saveEmailTemplates(data) {
+  PROPS.setProperty('APPROVAL_EMAIL_SUBJECT',  data.approvalSubject  || '');
+  PROPS.setProperty('APPROVAL_EMAIL_BODY',     data.approvalBody     || '');
+  PROPS.setProperty('REJECTION_EMAIL_SUBJECT', data.rejectionSubject || '');
+  PROPS.setProperty('REJECTION_EMAIL_BODY',    data.rejectionBody    || '');
+}
+
+function resetEmailTemplatesToDefault() {
+  const defaults = getDefaultEmailTemplates();
+  PROPS.setProperty('APPROVAL_EMAIL_SUBJECT',  defaults.approvalSubject);
+  PROPS.setProperty('APPROVAL_EMAIL_BODY',     defaults.approvalBody);
+  PROPS.setProperty('REJECTION_EMAIL_SUBJECT', defaults.rejectionSubject);
+  PROPS.setProperty('REJECTION_EMAIL_BODY',    defaults.rejectionBody);
+  return defaults;
+}
+
+function applyEmailTemplate(template, values) {
+  const posterBlock = values.posterNumber
+    ? '<p><strong>Poster Number:</strong> ' + values.posterNumber + '</p>'
+    : '';
+  const notesBlock = values.reviewerNotes
+    ? '<p><strong>Reviewer Comments:</strong></p><p>' + values.reviewerNotes + '</p>'
+    : '';
+
+  return template
+    .replace(/\{\{STUDENT_FIRST\}\}/g,         values.studentFirst   || '')
+    .replace(/\{\{STUDENT_LAST\}\}/g,          values.studentLast    || '')
+    .replace(/\{\{STUDENT_NAME\}\}/g,          values.studentFirst   || '')
+    .replace(/\{\{TITLE\}\}/g,                 values.title          || '')
+    .replace(/\{\{POSTER_NUMBER\}\}/g,         values.posterNumber   || '')
+    .replace(/\{\{POSTER_BLOCK\}\}/g,          posterBlock)
+    .replace(/\{\{REVIEWER_NOTES\}\}/g,        values.reviewerNotes  || '')
+    .replace(/\{\{REVIEWER_NOTES_BLOCK\}\}/g,  notesBlock);
+}
+
 // ===== BATCH APPROVAL EMAILS =====
 function sendBatchApprovalEmails() {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Form Responses');
-  const data  = sheet.getDataRange().getValues();
-  let sent    = 0;
+  const sheet     = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Form Responses');
+  const data      = sheet.getDataRange().getValues();
+  const templates = getEmailTemplates();
+  let sent        = 0;
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     if ((row[COL.APPROVAL_STATUS] || '').toString().trim().toLowerCase() !== 'approved') continue;
     if (row[COL.EMAIL_STATUS] && row[COL.EMAIL_STATUS].toString().trim() !== '') continue;
 
-    const name      = row[COL.STUDENT_FIRST];
-    const email     = row[COL.STUDENT_EMAIL];
-    const title     = row[COL.TITLE];
-    const posterNum = row[COL.POSTER_NUMBER]
-      ? '<p><strong>Poster Number:</strong> ' + row[COL.POSTER_NUMBER] + '</p>' : '';
+    const values = {
+      studentFirst:  (row[COL.STUDENT_FIRST]  || '').toString(),
+      studentLast:   (row[COL.STUDENT_LAST]   || '').toString(),
+      title:         (row[COL.TITLE]          || '').toString(),
+      posterNumber:  (row[COL.POSTER_NUMBER]  || '').toString().trim()
+    };
 
     MailApp.sendEmail({
-      to: email,
-      subject: "2026 FoMD Summer Students' Research Day – Abstract Approved",
-      htmlBody: `
-        <p>Dear ${name},</p>
-        <p>We are pleased to inform you that your abstract submission has been <strong>approved</strong> for
-           the <strong>2026 FoMD Summer Students' Research Day</strong>.</p>
-        <p><strong>Abstract Title:</strong> ${title}</p>
-        ${posterNum}
-        <p>Further details regarding the event will be sent to you in due course.</p>
-        <p>Congratulations, and we look forward to seeing your presentation!</p>
-        <br>
-        <p>Kind regards,<br>FoMD Undergraduate Research Program</p>
-      `
+      to:       row[COL.STUDENT_EMAIL],
+      subject:  applyEmailTemplate(templates.approvalSubject, values),
+      htmlBody: applyEmailTemplate(templates.approvalBody,    values)
     });
 
     const ts = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
@@ -503,35 +664,27 @@ function sendBatchApprovalEmails() {
 
 // ===== BATCH REJECTION EMAILS =====
 function sendBatchRejectionEmails() {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Form Responses');
-  const data  = sheet.getDataRange().getValues();
-  let sent    = 0;
+  const sheet     = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Form Responses');
+  const data      = sheet.getDataRange().getValues();
+  const templates = getEmailTemplates();
+  let sent        = 0;
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     if ((row[COL.APPROVAL_STATUS] || '').toString().trim().toLowerCase() !== 'not approved') continue;
     if (row[COL.EMAIL_STATUS] && row[COL.EMAIL_STATUS].toString().trim() !== '') continue;
 
-    const name    = row[COL.STUDENT_FIRST];
-    const email   = row[COL.STUDENT_EMAIL];
-    const title   = row[COL.TITLE];
-    const message = (row[COL.REVIEW_NOTES] || '').toString().trim();
+    const values = {
+      studentFirst:  (row[COL.STUDENT_FIRST]  || '').toString(),
+      studentLast:   (row[COL.STUDENT_LAST]   || '').toString(),
+      title:         (row[COL.TITLE]          || '').toString(),
+      reviewerNotes: (row[COL.REVIEW_NOTES]   || '').toString().trim()
+    };
 
     MailApp.sendEmail({
-      to: email,
-      subject: "2026 FoMD Summer Students' Research Day – Abstract Submission Update",
-      htmlBody: `
-        <p>Dear ${name},</p>
-        <p>Thank you for submitting your abstract to the <strong>2026 FoMD Summer Students' Research Day</strong>.</p>
-        <p><strong>Abstract Title:</strong> ${title}</p>
-        <p>After careful review, we regret to inform you that your abstract was not selected for presentation at this year's event.</p>
-        ${message ? `<p><strong>Reviewer Comments:</strong></p><p>${message}</p>` : ''}
-        <p>We encourage you to continue your research and hope to see you at future events.</p>
-        <p>If you have any questions, please contact
-           <a href="mailto:fmdugrad@ualberta.ca">fmdugrad@ualberta.ca</a>.</p>
-        <br>
-        <p>Kind regards,<br>FoMD Undergraduate Research Program</p>
-      `
+      to:       row[COL.STUDENT_EMAIL],
+      subject:  applyEmailTemplate(templates.rejectionSubject, values),
+      htmlBody: applyEmailTemplate(templates.rejectionBody,    values)
     });
 
     const ts = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
@@ -547,29 +700,28 @@ function setupSheet() {
   const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Form Responses');
 
   const headers = [
-    'Timestamp',                // A
-    'Student First Name',       // B
-    'Student Last Name',        // C
-    'Student Email',            // D
-    'Stipend Support',          // E
-    'Stipend (Other)',          // F
-    'Supervisor First Name',    // G
-    'Supervisor Last Name',     // H
-    'Supervisor Email',         // I
-    'Department',               // J
-    'Institute Affiliation',    // K
-    'Abstract Title',           // L
-    'First Author',             // M
-    'First Author Affiliation', // N
-    'Additional Authors',       // O
-    'Abstract Body',            // P
-    'Approval Status',          // Q ← admin dropdown
-    'Review Notes',             // R ← admin fills
-    'PDF Status',               // S ← auto
-    'PDF Drive Link',           // T ← auto
-    'Email Status',             // U ← auto
-    'Poster Number',            // V ← auto
-    'Edit Token'                // W ← system
+    'Timestamp',             // A
+    'Student First Name',    // B
+    'Student Last Name',     // C
+    'Student Email',         // D
+    'Stipend Support',       // E
+    'Stipend (Other)',       // F
+    'Supervisor First Name', // G
+    'Supervisor Last Name',  // H
+    'Supervisor Email',      // I
+    'Department',            // J
+    'Institute Affiliation', // K
+    'Abstract Title',        // L
+    'First Author',          // M
+    'Additional Authors',    // N
+    'Abstract Body',         // O
+    'Approval Status',       // P ← admin dropdown
+    'Review Notes',          // Q ← admin fills
+    'PDF Status',            // R ← auto
+    'PDF Drive Link',        // S ← auto
+    'Email Status',          // T ← auto
+    'Poster Number',         // U ← auto
+    'Edit Token'             // V ← system
   ];
 
   // If row 1 already has submission data (not a header), insert a blank row first
@@ -591,6 +743,194 @@ function setupSheet() {
   sheet.getRange(2, COL.APPROVAL_STATUS + 1, sheet.getMaxRows() - 1, 1).setDataValidation(approvalRule);
 
   Logger.log('Sheet headers and dropdowns set up successfully.');
+}
+
+// ===== SIDEBAR: GET ALL ABSTRACTS FOR REVIEW =====
+function getAbstractsForReview() {
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Form Responses');
+  const data  = sheet.getDataRange().getValues();
+  const abstracts = [];
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (!row[COL.TIMESTAMP]) continue;
+
+    abstracts.push({
+      rowIndex:      i + 1,
+      studentFirst:  row[COL.STUDENT_FIRST]  || '',
+      studentLast:   row[COL.STUDENT_LAST]   || '',
+      studentEmail:  row[COL.STUDENT_EMAIL]  || '',
+      supervisorFirst: row[COL.SUP_FIRST]    || '',
+      supervisorLast:  row[COL.SUP_LAST]     || '',
+      department:    row[COL.DEPARTMENT]     || '',
+      title:         row[COL.TITLE]          || '',
+      firstAuthor:   row[COL.FIRST_AUTHOR]   || '',
+      coAuthors:     row[COL.CO_AUTHORS]     || '',
+      abstractBody:  row[COL.ABSTRACT_BODY]  || '',
+      approvalStatus: (row[COL.APPROVAL_STATUS] || '').toString().trim() || 'Unprocessed',
+      reviewNotes:   row[COL.REVIEW_NOTES]   || '',
+      posterNumber:  row[COL.POSTER_NUMBER]  || '',
+      pdfLink:       row[COL.PDF_LINK]       || ''
+    });
+  }
+
+  return abstracts;
+}
+
+// ===== SIDEBAR: SAVE APPROVAL DECISION =====
+// Returns { posterNumber } so the sidebar can display the auto-assigned number immediately.
+function saveAbstractDecision(rowIndex, status, notes) {
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Form Responses');
+  sheet.getRange(rowIndex, COL.APPROVAL_STATUS + 1).setValue(status || 'Unprocessed');
+  sheet.getRange(rowIndex, COL.REVIEW_NOTES    + 1).setValue(notes  || '');
+
+  const statusLower = (status || '').toLowerCase();
+  const rowRange    = sheet.getRange(rowIndex, 1, 1, 22);
+  let posterNumber  = '';
+
+  if (statusLower === 'approved') {
+    rowRange.setBackgroundColor('#D9F2D9');
+    const existing = sheet.getRange(rowIndex, COL.POSTER_NUMBER + 1).getValue();
+    if (existing && existing.toString().trim() !== '') {
+      posterNumber = existing.toString().trim();
+    } else {
+      const next = getNextPosterNumber(sheet);
+      posterNumber = next.toString().padStart(3, '0');
+      sheet.getRange(rowIndex, COL.POSTER_NUMBER + 1).setValue(posterNumber);
+    }
+  } else if (statusLower === 'not approved') {
+    rowRange.setBackgroundColor('#F2D9D9');
+    sheet.getRange(rowIndex, COL.POSTER_NUMBER + 1).setValue('');
+  } else {
+    rowRange.setBackgroundColor('#FFFACD');
+    sheet.getRange(rowIndex, COL.POSTER_NUMBER + 1).setValue('');
+  }
+
+  return { posterNumber: posterNumber };
+}
+
+// Converts "First Last" → "Last, First". Handles multi-part first names.
+function formatAuthorLastFirst(fullName) {
+  const name = (fullName || '').trim();
+  if (!name) return name;
+  const lastSpace = name.lastIndexOf(' ');
+  if (lastSpace === -1) return name;
+  return name.substring(lastSpace + 1) + ', ' + name.substring(0, lastSpace);
+}
+
+// ===== SIDEBAR: GENERATE ABSTRACT LIST PDF =====
+// Creates a styled Google Doc with a numbered table, exports it as a PDF to the
+// submissions folder, and returns the Drive view URL.
+// Throws if any approved abstract is missing a poster number.
+function generateAbstractListPDF() {
+  if (!SUBMISSIONS_FOLDER_ID) throw new Error('SUBMISSIONS_FOLDER_ID not set in Script Properties');
+
+  const abstracts = generateAbstractList(); // validates + sorts
+
+  const ts       = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const docTitle = "2026 FoMD SSRD – Abstract List " + ts;
+
+  const doc  = DocumentApp.create(docTitle);
+  const body = doc.getBody();
+  body.clear();
+
+  // Title block
+  const heading = body.appendParagraph("2026 FoMD Summer Students’ Research Day");
+  heading.setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  heading.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  heading.editAsText().setForegroundColor('#003C1E');
+
+  const sub = body.appendParagraph('Abstract List');
+  sub.setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  sub.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+
+  body.appendParagraph('');
+
+  // Build table rows — poster number as plain integer (or '.' kept as-is)
+  const rows = [['#', 'First Author', 'Abstract Title']];
+  abstracts.forEach(function(a) {
+    const num = parseInt(a.posterNumber, 10);
+    rows.push([isNaN(num) ? a.posterNumber.trim() : num + '.', formatAuthorLastFirst(a.firstAuthor), a.title]);
+  });
+
+  const table = body.appendTable(rows);
+
+  // Style header row
+  const headerRow = table.getRow(0);
+  for (let c = 0; c < 3; c++) {
+    headerRow.getCell(c).setBackgroundColor('#003C1E');
+    headerRow.getCell(c).editAsText().setForegroundColor('#ffffff').setBold(true);
+  }
+
+  // Alternate row shading
+  for (let r = 1; r < table.getNumRows(); r++) {
+    if (r % 2 === 0) {
+      for (let c = 0; c < 3; c++) {
+        table.getRow(r).getCell(c).setBackgroundColor('#e8f5e8');
+      }
+    }
+  }
+
+  doc.saveAndClose();
+
+  const pdfBlob = DocumentApp.openById(doc.getId())
+    .getAs('application/pdf')
+    .setName(docTitle + '.pdf');
+  const folder  = DriveApp.getFolderById(SUBMISSIONS_FOLDER_ID);
+  const pdfFile = folder.createFile(pdfBlob);
+
+  Drive.Files.trash(doc.getId(), { supportsAllDrives: true });
+
+  return 'https://drive.google.com/file/d/' + pdfFile.getId() + '/view';
+}
+
+// ===== SIDEBAR: VALIDATE & RETURN ABSTRACT LIST DATA =====
+// Throws if any approved abstract is still missing a poster number.
+function generateAbstractList() {
+  const sheet   = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Form Responses');
+  const data    = sheet.getDataRange().getValues();
+  const list    = [];
+  const missing = [];
+
+  for (let i = 1; i < data.length; i++) {
+    const row      = data[i];
+    if (!row[COL.TIMESTAMP]) continue;
+    const approval = (row[COL.APPROVAL_STATUS] || '').toString().trim().toLowerCase();
+    if (approval !== 'approved') continue;
+
+    const posterNumber = (row[COL.POSTER_NUMBER] || '').toString().trim();
+    if (!posterNumber) {
+      missing.push(
+        (row[COL.STUDENT_FIRST] || '') + ' ' + (row[COL.STUDENT_LAST] || '')
+      );
+      continue;
+    }
+
+    list.push({
+      posterNumber: posterNumber,
+      firstAuthor:  (row[COL.FIRST_AUTHOR] || '').toString(),
+      title:        (row[COL.TITLE]        || '').toString()
+    });
+  }
+
+  if (missing.length > 0) {
+    throw new Error(
+      missing.length + ' approved abstract(s) have no poster number yet: ' +
+      missing.join(', ') + '. Open each submission in the Abstract Review panel and re-save, or run "Fix Missing Poster Numbers" from the menu.'
+    );
+  }
+
+  list.sort(function(a, b) {
+    const rawA = a.posterNumber.trim();
+    const rawB = b.posterNumber.trim();
+    if (rawA === '.') return 1;   // '.' entries go to the end
+    if (rawB === '.') return -1;
+    const nA = parseInt((rawA.match(/\d+/) || ['0'])[0], 10);
+    const nB = parseInt((rawB.match(/\d+/) || ['0'])[0], 10);
+    return nA - nB;
+  });
+
+  return list;
 }
 
 // ===== UTILITIES =====

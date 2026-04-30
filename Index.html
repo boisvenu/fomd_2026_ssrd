@@ -129,7 +129,7 @@
     #authorsContainer { margin-top: 8px; }
     .author-row {
       display: grid;
-      grid-template-columns: 1fr 1fr auto;
+      grid-template-columns: 1fr auto;
       gap: 8px;
       align-items: center;
       margin-bottom: 8px;
@@ -433,18 +433,15 @@
       <label style="margin-top: 14px;">First Author <span class="required">*</span>
         <span class="hint">(typically the presenting student)</span>
       </label>
-      <div class="author-row" style="margin-top: 6px;">
-        <input type="text" name="firstAuthor" id="firstAuthorField" required placeholder="Full name" style="margin-top:0;">
-        <input type="text" name="firstAuthorAffiliation" id="firstAuthorAffiliation" required placeholder="Department, Faculty, Institution" style="margin-top:0;">
-        <div></div>
-      </div>
+      <input type="text" name="firstAuthor" id="firstAuthorField" required placeholder="Full name" style="margin-top:6px;">
 
       <!-- Additional Authors -->
-      <label style="margin-top: 18px;">Additional Authors &amp; Affiliations
-        <span class="hint">(optional — add co-authors in order)</span>
+      <label id="additionalAuthorsLabel" style="margin-top: 18px;">Additional Authors <span class="required">*</span>
+        <span class="hint">(at least one co-author required; add in order)</span>
       </label>
       <div id="authorsContainer"></div>
       <button type="button" class="btn-add-author" onclick="addAuthor()">+ Add Author</button>
+      <div class="field-error" id="additionalAuthorsError">Please add at least one co-author with a name.</div>
 
       <!-- Abstract Body -->
       <div class="word-count-row">
@@ -510,7 +507,6 @@
       row.id = 'author-row-' + id;
       row.innerHTML =
         '<input type="text" placeholder="Full name" class="author-name" aria-label="Author name">' +
-        '<input type="text" placeholder="Department, Faculty, Institution" class="author-affiliation" aria-label="Author affiliation">' +
         '<button type="button" class="btn-remove" onclick="removeAuthor(' + id + ')" aria-label="Remove author">&times;</button>';
       container.appendChild(row);
     }
@@ -523,10 +519,7 @@
     function getAdditionalAuthors() {
       var rows = document.querySelectorAll('#authorsContainer .author-row');
       return Array.from(rows).map(function(row) {
-        return {
-          name:        row.querySelector('.author-name').value.trim(),
-          affiliation: row.querySelector('.author-affiliation').value.trim()
-        };
+        return { name: row.querySelector('.author-name').value.trim() };
       }).filter(function(a) { return a.name !== ''; });
     }
 
@@ -578,7 +571,6 @@
         setVal('[name=supervisorInstitute]',  d.supervisorInstitute);
         setVal('[name=title]',               d.title);
         setVal('#firstAuthorField',          d.firstAuthor);
-        setVal('[name=firstAuthorAffiliation]', d.firstAuthorAffiliation);
         setVal('#abstractBody',              d.abstractBody);
 
         // Mark first author as manually set so sync doesn't overwrite
@@ -593,8 +585,7 @@
           addAuthor();
           var rows = document.querySelectorAll('.author-row');
           var last = rows[rows.length - 1];
-          last.querySelector('.author-name').value        = author.name        || '';
-          last.querySelector('.author-affiliation').value = author.affiliation || '';
+          last.querySelector('.author-name').value = author.name || '';
         });
       })(PREFILL);
     }
@@ -607,24 +598,65 @@
       err.style.display = match || this.value === '' ? 'none' : 'block';
     });
 
+    function focusField(el) {
+      if (!el) return;
+      if (typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      // Defer focus slightly so the smooth scroll isn't fought by focus jump
+      setTimeout(function() { try { el.focus({ preventScroll: true }); } catch (_) { el.focus(); } }, 250);
+    }
+
     document.getElementById('abstractForm').addEventListener('submit', function(e) {
       e.preventDefault();
+
+      // Find first empty required field in document order
+      var requiredEls = document.querySelectorAll('#abstractForm [required]');
+      var firstMissing = null;
+      for (var i = 0; i < requiredEls.length; i++) {
+        var el = requiredEls[i];
+        // Skip hidden fields (e.g., stipendOther when not "Other")
+        if (el.offsetParent === null && el.type !== 'hidden') continue;
+        if (!el.value || el.value.trim() === '') {
+          firstMissing = el;
+          break;
+        }
+      }
+      if (firstMissing) {
+        alert('Please fill in all required fields before submitting.');
+        focusField(firstMissing);
+        return;
+      }
 
       // Supervisor email match guard
       var supEmail   = document.getElementById('supervisorEmail').value;
       var supConfirm = document.getElementById('supervisorEmailConfirm').value;
       if (supEmail !== supConfirm) {
         document.getElementById('supervisorEmailError').style.display = 'block';
-        document.getElementById('supervisorEmailConfirm').focus();
+        focusField(document.getElementById('supervisorEmailConfirm'));
         return;
       }
       document.getElementById('supervisorEmailError').style.display = 'none';
+
+      // At least one co-author required
+      var coAuthors = getAdditionalAuthors();
+      var coAuthorErr = document.getElementById('additionalAuthorsError');
+      if (coAuthors.length === 0) {
+        coAuthorErr.style.display = 'block';
+        // If no rows exist, add one so the user has somewhere to type
+        var rows = document.querySelectorAll('#authorsContainer .author-row');
+        if (rows.length === 0) addAuthor();
+        var firstAuthorInput = document.querySelector('#authorsContainer .author-name');
+        focusField(firstAuthorInput || document.getElementById('additionalAuthorsLabel'));
+        return;
+      }
+      coAuthorErr.style.display = 'none';
 
       // Word count guard
       var abstractBody = document.getElementById('abstractBody');
       if (countWords(abstractBody.value) > 250) {
         alert('Your abstract exceeds 250 words. Please shorten it before submitting.');
-        abstractBody.focus();
+        focusField(abstractBody);
         return;
       }
 

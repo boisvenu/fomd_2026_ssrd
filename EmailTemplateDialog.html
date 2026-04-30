@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      * { box-sizing: border-box; }
+
+      body {
+        font-family: Roboto, Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #f4faf4;
+        color: #003C1E;
+        font-size: 13px;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      /* ── Header ── */
+      .header {
+        background: #003C1E;
+        color: #fff;
+        padding: 10px 18px;
+        font-size: 1em;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+
+      /* ── Tabs ── */
+      .tab-row {
+        display: flex;
+        background: #005C2E;
+        flex-shrink: 0;
+      }
+      .tab {
+        padding: 9px 22px;
+        cursor: pointer;
+        font-size: 0.9em;
+        font-weight: 600;
+        color: #a8d5b5;
+        border-bottom: 3px solid transparent;
+        user-select: none;
+      }
+      .tab:hover { color: #fff; }
+      .tab.active {
+        color: #fff;
+        border-bottom-color: #F4C430;
+        background: #007A3E;
+      }
+
+      /* ── Main layout ── */
+      .main {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+        gap: 0;
+      }
+
+      /* ── Left: editor ── */
+      .editor-panel {
+        display: flex;
+        flex-direction: column;
+        width: 55%;
+        border-right: 2px solid #c8e6c8;
+        padding: 14px 16px;
+        background: #fff;
+        overflow-y: auto;
+        gap: 8px;
+      }
+
+      .field-label {
+        font-size: 0.8em;
+        font-weight: 700;
+        color: #005C2E;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 3px;
+        display: block;
+      }
+
+      input[type="text"] {
+        width: 100%;
+        padding: 7px 10px;
+        border: 1px solid #bbb;
+        border-radius: 4px;
+        font-size: 0.9em;
+        font-family: inherit;
+        color: #111;
+      }
+      input[type="text"]:focus { border-color: #005C2E; outline: none; }
+
+      textarea {
+        width: 100%;
+        flex: 1;
+        min-height: 200px;
+        border: 1px solid #bbb;
+        border-radius: 4px;
+        padding: 8px 10px;
+        font-size: 0.83em;
+        font-family: 'Courier New', monospace;
+        line-height: 1.5;
+        resize: none;
+        color: #111;
+      }
+      textarea:focus { border-color: #005C2E; outline: none; }
+
+      /* ── Placeholder chips ── */
+      .placeholder-section {
+        flex-shrink: 0;
+      }
+      .placeholder-section .field-label { margin-bottom: 5px; }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+      .chip {
+        background: #e8f5e8;
+        border: 1px solid #a8d5b5;
+        border-radius: 4px;
+        padding: 3px 8px;
+        font-size: 0.78em;
+        font-family: 'Courier New', monospace;
+        color: #003C1E;
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+      }
+      .chip:hover { background: #c8e6c8; }
+      .chip-note {
+        font-size: 0.75em;
+        color: #666;
+        margin-top: 4px;
+        line-height: 1.4;
+      }
+
+      /* ── Right: preview ── */
+      .preview-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: #f9fef9;
+        overflow: hidden;
+      }
+      .preview-header {
+        padding: 8px 14px;
+        font-size: 0.8em;
+        font-weight: 700;
+        color: #005C2E;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        border-bottom: 1px solid #c8e6c8;
+        background: #e8f5e8;
+        flex-shrink: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .preview-subject {
+        padding: 8px 14px;
+        font-size: 0.85em;
+        color: #333;
+        border-bottom: 1px solid #e0e0e0;
+        background: #fff;
+        flex-shrink: 0;
+      }
+      .preview-subject strong { color: #003C1E; }
+      iframe {
+        flex: 1;
+        border: none;
+        background: #fff;
+      }
+
+      /* ── Bottom bar ── */
+      .bottom-bar {
+        background: #fff;
+        border-top: 2px solid #c8e6c8;
+        padding: 10px 18px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+      }
+      button {
+        padding: 8px 18px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9em;
+        font-weight: 700;
+      }
+      .btn-save  { background: #005C2E; color: #fff; }
+      .btn-save:hover  { background: #007A3E; }
+      .btn-reset { background: #6c757d; color: #fff; }
+      .btn-reset:hover { background: #3d4449; }
+
+      .status-msg {
+        display: none;
+        font-size: 0.83em;
+        padding: 5px 10px;
+        border-radius: 4px;
+        background: #f0faf0;
+        border: 1px solid #b2d8b2;
+        margin-left: auto;
+      }
+      .status-msg.show  { display: block; }
+      .status-msg.error { background: #fdf0f0; border-color: #f5b8b8; color: #7a1a1a; }
+    </style>
+  </head>
+  <body>
+
+    <div class="header">Email Template Editor</div>
+
+    <div class="tab-row">
+      <div class="tab active" id="tab-approval" onclick="switchTab('approval')">✓ Approval Email</div>
+      <div class="tab"        id="tab-rejection" onclick="switchTab('rejection')">✗ Rejection Email</div>
+    </div>
+
+    <div class="main">
+      <!-- ── Editor panel ── -->
+      <div class="editor-panel">
+
+        <div>
+          <span class="field-label">Subject Line</span>
+          <input type="text" id="subjectInput" placeholder="Email subject…" oninput="schedulePreview()">
+        </div>
+
+        <div style="display:flex;flex-direction:column;flex:1;">
+          <span class="field-label">Email Body <span style="text-transform:none;font-weight:400;color:#555;">(HTML)</span></span>
+          <textarea id="bodyTextarea" placeholder="Enter HTML email body…" oninput="schedulePreview()"></textarea>
+        </div>
+
+        <div class="placeholder-section">
+          <span class="field-label">Insert Placeholder</span>
+          <div class="chips" id="placeholderChips"></div>
+          <p class="chip-note" id="placeholderNote"></p>
+        </div>
+
+      </div>
+
+      <!-- ── Preview panel ── -->
+      <div class="preview-panel">
+        <div class="preview-header">
+          Live Preview
+          <span style="font-weight:400;text-transform:none;font-size:0.9em;color:#555;">using sample values</span>
+        </div>
+        <div class="preview-subject" id="previewSubject"></div>
+        <iframe id="previewFrame" sandbox="allow-same-origin"></iframe>
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <button class="btn-save"  onclick="saveTemplates()">Save Templates</button>
+      <button class="btn-reset" onclick="resetToDefault()">Reset to Default</button>
+      <div class="status-msg" id="statusMsg"></div>
+    </div>
+
+    <script>
+      // ── Placeholder definitions ────────────────
+      var PLACEHOLDERS = {
+        approval: [
+          { tag: '{{STUDENT_FIRST}}',      label: 'Student first name',   sample: 'Jane' },
+          { tag: '{{STUDENT_LAST}}',       label: 'Student last name',    sample: 'Smith' },
+          { tag: '{{TITLE}}',              label: 'Abstract title',       sample: 'The Effect of Exercise on Cognitive Function' },
+          { tag: '{{POSTER_NUMBER}}',      label: 'Poster # (value only)',sample: 'P-007' },
+          { tag: '{{POSTER_BLOCK}}',       label: 'Poster # line (if set, renders a full paragraph; empty if not assigned)', sample: '<p><strong>Poster Number:</strong> P-007</p>' }
+        ],
+        rejection: [
+          { tag: '{{STUDENT_FIRST}}',      label: 'Student first name',   sample: 'Jane' },
+          { tag: '{{STUDENT_LAST}}',       label: 'Student last name',    sample: 'Smith' },
+          { tag: '{{TITLE}}',              label: 'Abstract title',       sample: 'The Effect of Exercise on Cognitive Function' },
+          { tag: '{{REVIEWER_NOTES}}',     label: 'Reviewer notes (raw text)', sample: 'We encourage you to resubmit next year.' },
+          { tag: '{{REVIEWER_NOTES_BLOCK}}', label: 'Reviewer notes section (renders a labelled paragraph; empty if no notes)', sample: '<p><strong>Reviewer Comments:</strong></p><p>We encourage you to resubmit next year.</p>' }
+        ]
+      };
+
+      var SAMPLE_VALUES = {
+        STUDENT_FIRST:         'Jane',
+        STUDENT_LAST:          'Smith',
+        TITLE:                 'The Effect of Exercise on Cognitive Function in Medical Students',
+        POSTER_NUMBER:         'P-007',
+        POSTER_BLOCK:          '<p><strong>Poster Number:</strong> P-007</p>',
+        REVIEWER_NOTES:        'We encourage you to resubmit next year with a more detailed methodology section.',
+        REVIEWER_NOTES_BLOCK:  '<p><strong>Reviewer Comments:</strong></p><p>We encourage you to resubmit next year with a more detailed methodology section.</p>'
+      };
+
+      // ── State ─────────────────────────────────
+      var currentTab = 'approval';
+      var templates  = { approvalSubject: '', approvalBody: '', rejectionSubject: '', rejectionBody: '' };
+      var previewTimer = null;
+
+      // ── Tab switching ─────────────────────────
+      function switchTab(tab) {
+        // Save current values before switching
+        if (currentTab === 'approval') {
+          templates.approvalSubject = document.getElementById('subjectInput').value;
+          templates.approvalBody    = document.getElementById('bodyTextarea').value;
+        } else {
+          templates.rejectionSubject = document.getElementById('subjectInput').value;
+          templates.rejectionBody    = document.getElementById('bodyTextarea').value;
+        }
+
+        currentTab = tab;
+        document.getElementById('tab-approval').classList.toggle('active', tab === 'approval');
+        document.getElementById('tab-rejection').classList.toggle('active', tab === 'rejection');
+
+        if (tab === 'approval') {
+          document.getElementById('subjectInput').value  = templates.approvalSubject;
+          document.getElementById('bodyTextarea').value  = templates.approvalBody;
+        } else {
+          document.getElementById('subjectInput').value  = templates.rejectionSubject;
+          document.getElementById('bodyTextarea').value  = templates.rejectionBody;
+        }
+
+        renderChips(tab);
+        updatePreview();
+      }
+
+      // ── Placeholder chips ─────────────────────
+      function renderChips(tab) {
+        var chips = document.getElementById('placeholderChips');
+        chips.innerHTML = '';
+        PLACEHOLDERS[tab].forEach(function(p) {
+          var el = document.createElement('span');
+          el.className = 'chip';
+          el.textContent = p.tag;
+          el.title = p.label;
+          el.onclick = function() { insertPlaceholder(p.tag); };
+          chips.appendChild(el);
+        });
+      }
+
+      function insertPlaceholder(tag) {
+        var ta = document.getElementById('bodyTextarea');
+        var start = ta.selectionStart;
+        var end   = ta.selectionEnd;
+        ta.value = ta.value.substring(0, start) + tag + ta.value.substring(end);
+        ta.selectionStart = ta.selectionEnd = start + tag.length;
+        ta.focus();
+        schedulePreview();
+      }
+
+      // ── Live preview ──────────────────────────
+      function schedulePreview() {
+        clearTimeout(previewTimer);
+        previewTimer = setTimeout(updatePreview, 280);
+      }
+
+      function applyPreviewValues(str) {
+        return str
+          .replace(/\{\{STUDENT_FIRST\}\}/g,        SAMPLE_VALUES.STUDENT_FIRST)
+          .replace(/\{\{STUDENT_LAST\}\}/g,         SAMPLE_VALUES.STUDENT_LAST)
+          .replace(/\{\{STUDENT_NAME\}\}/g,         SAMPLE_VALUES.STUDENT_FIRST)
+          .replace(/\{\{TITLE\}\}/g,                SAMPLE_VALUES.TITLE)
+          .replace(/\{\{POSTER_NUMBER\}\}/g,        SAMPLE_VALUES.POSTER_NUMBER)
+          .replace(/\{\{POSTER_BLOCK\}\}/g,         SAMPLE_VALUES.POSTER_BLOCK)
+          .replace(/\{\{REVIEWER_NOTES\}\}/g,       SAMPLE_VALUES.REVIEWER_NOTES)
+          .replace(/\{\{REVIEWER_NOTES_BLOCK\}\}/g, SAMPLE_VALUES.REVIEWER_NOTES_BLOCK);
+      }
+
+      function updatePreview() {
+        var subject = document.getElementById('subjectInput').value;
+        var body    = document.getElementById('bodyTextarea').value;
+
+        var renderedSubject = applyPreviewValues(subject);
+        var renderedBody    = applyPreviewValues(body);
+
+        document.getElementById('previewSubject').innerHTML =
+          '<strong>Subject:</strong> ' + esc(renderedSubject);
+
+        var frame = document.getElementById('previewFrame');
+        frame.srcdoc =
+          '<!DOCTYPE html><html><head><style>' +
+          'body{font-family:Roboto,Arial,sans-serif;padding:16px 20px;font-size:13px;color:#222;line-height:1.5;}' +
+          'a{color:#005C2E;}' +
+          '</style></head><body>' + renderedBody + '</body></html>';
+      }
+
+      // ── Load templates from server ────────────
+      function loadTemplates() {
+        google.script.run
+          .withSuccessHandler(function(data) {
+            templates = data;
+            // Load approval tab by default
+            document.getElementById('subjectInput').value = templates.approvalSubject;
+            document.getElementById('bodyTextarea').value = templates.approvalBody;
+            renderChips('approval');
+            updatePreview();
+          })
+          .withFailureHandler(function(err) {
+            showStatus('Error loading templates: ' + err.message, true);
+          })
+          .getEmailTemplates();
+      }
+
+      // ── Save ──────────────────────────────────
+      function saveTemplates() {
+        // Flush current tab values into templates object
+        if (currentTab === 'approval') {
+          templates.approvalSubject  = document.getElementById('subjectInput').value;
+          templates.approvalBody     = document.getElementById('bodyTextarea').value;
+        } else {
+          templates.rejectionSubject = document.getElementById('subjectInput').value;
+          templates.rejectionBody    = document.getElementById('bodyTextarea').value;
+        }
+
+        showStatus('Saving…');
+        google.script.run
+          .withSuccessHandler(function() { showStatus('✓ Templates saved.'); })
+          .withFailureHandler(function(err) { showStatus('Error: ' + err.message, true); })
+          .saveEmailTemplates(templates);
+      }
+
+      // ── Reset to default ──────────────────────
+      function resetToDefault() {
+        if (!confirm('Reset both email templates to their defaults? This will overwrite any customizations.')) return;
+        showStatus('Resetting…');
+        google.script.run
+          .withSuccessHandler(function(data) {
+            templates = data;
+            if (currentTab === 'approval') {
+              document.getElementById('subjectInput').value = templates.approvalSubject;
+              document.getElementById('bodyTextarea').value = templates.approvalBody;
+            } else {
+              document.getElementById('subjectInput').value = templates.rejectionSubject;
+              document.getElementById('bodyTextarea').value = templates.rejectionBody;
+            }
+            updatePreview();
+            showStatus('✓ Reset to defaults.');
+          })
+          .withFailureHandler(function(err) { showStatus('Error: ' + err.message, true); })
+          .resetEmailTemplatesToDefault();
+      }
+
+      // ── Helpers ───────────────────────────────
+      function showStatus(text, isError) {
+        var el = document.getElementById('statusMsg');
+        el.textContent = text;
+        el.className = 'status-msg show' + (isError ? ' error' : '');
+      }
+
+      function esc(str) {
+        return String(str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      // ── Init ──────────────────────────────────
+      loadTemplates();
+    </script>
+  </body>
+</html>
