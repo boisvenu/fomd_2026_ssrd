@@ -340,22 +340,26 @@
     </div>
 
     <!-- ════════════════════════════════════════
-         SECTION 3 — Poster Numbers (fallback)
+         SECTION 3 — Posters
     ════════════════════════════════════════ -->
     <div class="section-header" onclick="toggleSection(this)">
-      Fix Missing Poster Numbers <span class="arrow">▼</span>
+      Posters <span class="arrow">▼</span>
     </div>
     <div class="section-body">
       <p class="note">
-        Poster numbers are assigned <strong>automatically</strong> when you approve an abstract
-        in the review panel above, or by changing col Q directly in the sheet.
+        <strong>Assign Poster Numbers</strong> — assigns sequential numbers to all approved
+        abstracts that are missing one, filling any gaps. Will never overwrite an existing number.
       </p>
-      <p class="note">
-        Use this only if an approved row is still missing a number — it assigns sequential
-        P-001, P-002, … and will never overwrite an existing number.
-      </p>
-      <button onclick="assignPosters()">Fix Missing Poster Numbers</button>
+      <button onclick="assignPosters()">Assign Poster Numbers</button>
       <div class="status-msg" id="posterStatus"></div>
+      <hr style="margin: 12px 0; border: none; border-top: 1px solid #ddd;">
+      <p class="note">
+        <strong>Fix Missing Poster Numbers</strong> — poster numbers are also assigned
+        <strong>automatically</strong> when you approve an abstract in the review panel above.
+        Use this only as a fallback if an approved row is still missing a number.
+      </p>
+      <button onclick="fixMissingPosters()">Fix Missing Poster Numbers</button>
+      <div class="status-msg" id="fixPosterStatus"></div>
     </div>
 
     <!-- ════════════════════════════════════════
@@ -634,6 +638,14 @@
         google.script.run
           .withSuccessHandler(function(msg) { showStatus('posterStatus', msg); })
           .withFailureHandler(function(err) { showStatus('posterStatus', 'Error: ' + err.message, true); })
+          .assignPosterNumbers();
+      }
+
+      function fixMissingPosters() {
+        showStatus('fixPosterStatus', 'Fixing missing poster numbers…');
+        google.script.run
+          .withSuccessHandler(function(msg) { showStatus('fixPosterStatus', msg); })
+          .withFailureHandler(function(err) { showStatus('fixPosterStatus', 'Error: ' + err.message, true); })
           .assignPosterNumbers();
       }
 

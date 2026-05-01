@@ -1,13 +1,15 @@
 // ===== CONFIG =====
 // Set these in Apps Script → Project Settings → Script Properties:
-//   SHEET_ID              — Google Sheet ID for form responses
-//   SUBMISSIONS_FOLDER_ID — "Abstract Submissions" folder ID in Shared Drive
-//   TEMPLATE_DOC_ID       — Abstract PDF template Google Doc ID
-//   EDIT_DEADLINE         — (optional) Cut-off date for edits, format: "2026-08-15"
+//   SHEET_ID                      — Google Sheet ID for form responses
+//   SUBMISSIONS_FOLDER_ID         — "Abstract Submissions" folder ID in Shared Drive
+//   TEMPLATE_DOC_ID               — Abstract PDF template Google Doc ID
+//   ABSTRACT_LIST_TEMPLATE_DOC_ID — Abstract List PDF template Google Doc ID
+//   EDIT_DEADLINE                 — (optional) Cut-off date for edits, format: "2026-08-15"
 const PROPS               = PropertiesService.getScriptProperties();
 const SHEET_ID            = PROPS.getProperty('SHEET_ID');
-const SUBMISSIONS_FOLDER_ID = PROPS.getProperty('SUBMISSIONS_FOLDER_ID');
-const TEMPLATE_DOC_ID       = PROPS.getProperty('TEMPLATE_DOC_ID');
+const SUBMISSIONS_FOLDER_ID           = PROPS.getProperty('SUBMISSIONS_FOLDER_ID');
+const TEMPLATE_DOC_ID                 = PROPS.getProperty('TEMPLATE_DOC_ID');
+const ABSTRACT_LIST_TEMPLATE_DOC_ID   = PROPS.getProperty('ABSTRACT_LIST_TEMPLATE_DOC_ID');
 
 // Single source of truth for all column positions (0-based)
 // A   B   C   D   E   F   G   H   I   J   K   L   M   N   O   P   Q   R   S   T   U   V   W
@@ -167,15 +169,19 @@ function onEdit(e) {
   }
 }
 
-// Returns the next sequential poster number (integer) across all existing assignments.
+// Returns the lowest poster number not yet assigned to any approved row.
 function getNextPosterNumber(sheet) {
   const data = sheet.getDataRange().getValues();
-  let max = 0;
+  const used = new Set();
   for (let i = 1; i < data.length; i++) {
+    const approval = (data[i][COL.APPROVAL_STATUS] || '').toString().trim().toLowerCase();
+    if (approval !== 'approved') continue;
     const match = (data[i][COL.POSTER_NUMBER] || '').toString().match(/(\d+)/);
-    if (match) max = Math.max(max, parseInt(match[1], 10));
+    if (match) used.add(parseInt(match[1], 10));
   }
-  return max + 1;
+  let next = 1;
+  while (used.has(next)) next++;
+  return next;
 }
 
 // ===== HANDLE FORM SUBMISSION (dispatcher) =====
@@ -574,26 +580,34 @@ function assignPosterNumbers() {
   const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Form Responses');
   const data  = sheet.getDataRange().getValues();
 
-  let maxNum = 0;
+  // Build the set of numbers already assigned to approved rows only
+  const used = new Set();
   for (let i = 1; i < data.length; i++) {
-    const existing = (data[i][COL.POSTER_NUMBER] || '').toString();
-    const match = existing.match(/(\d+)/);
-    if (match) maxNum = Math.max(maxNum, parseInt(match[1], 10));
+    const approval = (data[i][COL.APPROVAL_STATUS] || '').toString().trim().toLowerCase();
+    if (approval !== 'approved') continue;
+    const match = (data[i][COL.POSTER_NUMBER] || '').toString().match(/(\d+)/);
+    if (match) used.add(parseInt(match[1], 10));
   }
+
+  // Start from the lowest gap
+  let next = 1;
+  while (used.has(next)) next++;
 
   let assigned = 0;
   for (let i = 1; i < data.length; i++) {
     const row      = data[i];
     const approval = (row[COL.APPROVAL_STATUS] || '').toString().trim().toLowerCase();
-    const hasPoster = row[COL.POSTER_NUMBER] && row[COL.POSTER_NUMBER].toString().trim() !== '';
+    const hasPoster = (row[COL.POSTER_NUMBER] || '').toString().trim() !== '';
     if (approval === 'approved' && !hasPoster) {
-      maxNum++;
-      sheet.getRange(i + 1, COL.POSTER_NUMBER + 1).setValue(maxNum.toString().padStart(3, '0'));
+      sheet.getRange(i + 1, COL.POSTER_NUMBER + 1).setValue(next.toString().padStart(3, '0'));
+      used.add(next);
       assigned++;
+      next++;
+      while (used.has(next)) next++;
     }
   }
 
-  const msg = 'Assigned ' + assigned + ' poster number(s). Next available: ' + (maxNum + 1).toString().padStart(3, '0') + '.';
+  const msg = 'Assigned ' + assigned + ' poster number(s). Next available: ' + next.toString().padStart(3, '0') + '.';
   Logger.log(msg);
   try { SpreadsheetApp.getUi().alert(msg); } catch (e) {}
   return msg;
@@ -605,7 +619,7 @@ function getDefaultEmailTemplates() {
     approvalSubject:  "2026 FoMD Summer Students' Research Day – Abstract Approved",
     approvalBody:
       '<p>Dear {{STUDENT_FIRST}},</p>\n' +
-      '<p>We are pleased to inform you that your abstract submission has been <strong>approved</strong> for the <strong>2026 FoMD Summer Students’ Research Day</strong>.</p>\n' +
+      '<p>We are pleased to inform you that your abstract submission has been <strong>approved</strong> for the <strong>2026 FoMD Summer Students\' Research Day</strong>.</p>\n' +
       '<p><strong>Abstract Title:</strong> {{TITLE}}</p>\n' +
       '{{POSTER_BLOCK}}\n' +
       '<p>Further details regarding the event will be sent to you in due course.</p>\n' +
@@ -616,9 +630,9 @@ function getDefaultEmailTemplates() {
     rejectionSubject: "2026 FoMD Summer Students' Research Day – Abstract Submission Update",
     rejectionBody:
       '<p>Dear {{STUDENT_FIRST}},</p>\n' +
-      '<p>Thank you for submitting your abstract to the <strong>2026 FoMD Summer Students’ Research Day</strong>.</p>\n' +
+      '<p>Thank you for submitting your abstract to the <strong>2026 FoMD Summer Students\' Research Day</strong>.</p>\n' +
       '<p><strong>Abstract Title:</strong> {{TITLE}}</p>\n' +
-      '<p>After careful review, we regret to inform you that your abstract was not selected for presentation at this year’s event.</p>\n' +
+      '<p>After careful review, we regret to inform you that your abstract was not selected for presentation at this year\'s event.</p>\n' +
       '{{REVIEWER_NOTES_BLOCK}}\n' +
       '<p>We encourage you to continue your research and hope to see you at future events.</p>\n' +
       '<p>If you have any questions, please contact <a href="mailto:fmdugrad@ualberta.ca">fmdugrad@ualberta.ca</a>.</p>\n' +
@@ -868,67 +882,111 @@ function formatAuthorLastFirst(fullName) {
 }
 
 // ===== SIDEBAR: GENERATE ABSTRACT LIST PDF =====
-// Creates a styled Google Doc with a numbered table, exports it as a PDF to the
-// submissions folder, and returns the Drive view URL.
+// Copies the ABSTRACT LIST TEMPLATE Google Doc, replaces two placeholder paragraphs
+// with the formatted abstract list, exports to PDF, and returns the Drive view URL.
 // Throws if any approved abstract is missing a poster number.
+//
+// Template requirements (no table needed):
+//   {{NUMBER_NAME}} — one paragraph styled as you want "1. Last, First" to look
+//   {{TITLE}}       — one paragraph styled as you want the title line to look
+//   Both paragraphs must exist in the template; their formatting is inherited by all entries.
 function generateAbstractListPDF() {
-  if (!SUBMISSIONS_FOLDER_ID) throw new Error('SUBMISSIONS_FOLDER_ID not set in Script Properties');
+  if (!SUBMISSIONS_FOLDER_ID)         throw new Error('SUBMISSIONS_FOLDER_ID not set in Script Properties');
+  if (!ABSTRACT_LIST_TEMPLATE_DOC_ID) throw new Error('ABSTRACT_LIST_TEMPLATE_DOC_ID not set in Script Properties');
 
   const abstracts = generateAbstractList(); // validates + sorts
 
-  const ts       = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
-  const docTitle = "2026 FoMD SSRD – Abstract List " + ts;
+  const ts      = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const docName = '2026 FoMD SSRD – Abstract List ' + ts;
 
-  const doc  = DocumentApp.create(docTitle);
-  const body = doc.getBody();
-  body.clear();
+  const copyId = DriveApp.getFileById(ABSTRACT_LIST_TEMPLATE_DOC_ID).makeCopy(docName).getId();
+  const doc    = DocumentApp.openById(copyId);
+  const body   = doc.getBody();
 
-  // Title block
-  const heading = body.appendParagraph("2026 FoMD Summer Students’ Research Day");
-  heading.setHeading(DocumentApp.ParagraphHeading.HEADING1);
-  heading.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-  heading.editAsText().setForegroundColor('#003C1E');
-
-  const sub = body.appendParagraph('Abstract List');
-  sub.setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  sub.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-
-  body.appendParagraph('');
-
-  // Build table rows — poster number as plain integer (or '.' kept as-is)
-  const rows = [['#', 'First Author', 'Abstract Title']];
-  abstracts.forEach(function(a) {
-    const num = parseInt(a.posterNumber, 10);
-    rows.push([isNaN(num) ? a.posterNumber.trim() : num + '.', formatAuthorLastFirst(a.firstAuthor), a.title]);
-  });
-
-  const table = body.appendTable(rows);
-
-  // Style header row
-  const headerRow = table.getRow(0);
-  for (let c = 0; c < 3; c++) {
-    headerRow.getCell(c).setBackgroundColor('#003C1E');
-    headerRow.getCell(c).editAsText().setForegroundColor('#ffffff').setBold(true);
+  // Locate each placeholder paragraph and capture its paragraph-level style.
+  function findAndCapture(placeholder) {
+    const escaped = placeholder.replace(/\{/g, '\\{').replace(/\}/g, '\\}');
+    const result  = body.findText(escaped);
+    if (!result) throw new Error(placeholder + ' placeholder not found in ABSTRACT LIST TEMPLATE');
+    const el   = result.getElement();
+    const para = el.getType() === DocumentApp.ElementType.TEXT ? el.getParent() : el;
+    const t    = para.editAsText();
+    const len  = t.getText().length;
+    const attrs = para.getAttributes();
+    // Strip only font/heading keys that applyStyle sets explicitly.
+    // Indent attributes stay in attrs so the template controls indentation.
+    [DocumentApp.Attribute.HEADING, DocumentApp.Attribute.FONT_FAMILY,
+     DocumentApp.Attribute.FONT_SIZE, DocumentApp.Attribute.BOLD,
+     DocumentApp.Attribute.ITALIC].forEach(function(k) { delete attrs[k]; });
+    Object.keys(attrs).forEach(function(k) {
+      if (attrs[k] === null || attrs[k] === undefined) delete attrs[k];
+    });
+    return {
+      para:       para,
+      index:      body.getChildIndex(para),
+      heading:    para.getHeading(),
+      attrs:      attrs,
+      fontFamily: len > 0 ? t.getFontFamily(0)      : null,
+      fontSize:   len > 0 ? t.getFontSize(0)        : null,
+      bold:       len > 0 ? t.isBold(0)             : null,
+      italic:     len > 0 ? t.isItalic(0)           : null,
+      color:      len > 0 ? t.getForegroundColor(0) : null
+    };
   }
 
-  // Alternate row shading
-  for (let r = 1; r < table.getNumRows(); r++) {
-    if (r % 2 === 0) {
-      for (let c = 0; c < 3; c++) {
-        table.getRow(r).getCell(c).setBackgroundColor('#e8f5e8');
-      }
+  const nameTpl  = findAndCapture('{{NUMBER_NAME}}');
+  const titleTpl = findAndCapture('{{TITLE}}');
+
+  // Remove both template paragraphs (higher index first to preserve lower index)
+  const first  = nameTpl.index  < titleTpl.index  ? nameTpl  : titleTpl;
+  const second = nameTpl.index  < titleTpl.index  ? titleTpl : nameTpl;
+  body.removeChild(second.para);
+  body.removeChild(first.para);
+  const insertAt = first.index;
+
+  // Apply captured style to a newly inserted paragraph.
+  function applyStyle(para, tpl) {
+    if (tpl.heading !== null) para.setHeading(tpl.heading);
+    if (Object.keys(tpl.attrs).length > 0) para.setAttributes(tpl.attrs);
+    const t   = para.editAsText();
+    const len = t.getText().length;
+    if (len === 0) return;
+    if (tpl.fontFamily !== null) t.setFontFamily(0, len - 1, tpl.fontFamily);
+    if (tpl.fontSize   !== null) t.setFontSize(0,   len - 1, tpl.fontSize);
+    if (tpl.bold       !== null) t.setBold(0,        len - 1, tpl.bold);
+    if (tpl.italic     !== null) t.setItalic(0,      len - 1, tpl.italic);
+    if (tpl.color      !== null) t.setForegroundColor(0, len - 1, tpl.color);
+  }
+
+  // Insert entries: name paragraph, title paragraph, blank line between each pair.
+  // Indentation is inherited entirely from the template paragraphs — set it there.
+  let idx = insertAt;
+  abstracts.forEach(function(abstract, i) {
+    const num      = parseInt(abstract.posterNumber, 10);
+    const numStr   = isNaN(num) ? abstract.posterNumber.trim() : num + '.';
+    const nameStr  = numStr + ' ' + formatAuthorLastFirst(abstract.firstAuthor);
+    const titleStr = abstract.title.toUpperCase();
+
+    applyStyle(body.insertParagraph(idx,     nameStr),  nameTpl);
+    applyStyle(body.insertParagraph(idx + 1, titleStr), titleTpl);
+
+    idx += 2;
+
+    if (i < abstracts.length - 1) {
+      body.insertParagraph(idx, '');
+      idx++;
     }
-  }
+  });
 
   doc.saveAndClose();
 
-  const pdfBlob = DocumentApp.openById(doc.getId())
+  const pdfBlob = DocumentApp.openById(copyId)
     .getAs('application/pdf')
-    .setName(docTitle + '.pdf');
+    .setName(docName + '.pdf');
   const folder  = DriveApp.getFolderById(SUBMISSIONS_FOLDER_ID);
   const pdfFile = folder.createFile(pdfBlob);
 
-  DriveApp.getFileById(doc.getId()).setTrashed(true);
+  DriveApp.getFileById(copyId).setTrashed(true);
 
   return 'https://drive.google.com/file/d/' + pdfFile.getId() + '/view';
 }
